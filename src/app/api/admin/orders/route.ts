@@ -135,7 +135,9 @@ export async function GET(request: Request) {
           const status = normalizeOrderStatus(String(order.status));
           const type = String(order.order_type);
           return (
-            (type === "custom" && isCustomAwaitingApproval({ order_type: type, status })) ||
+            (type === "custom" &&
+              (isCustomAwaitingApproval({ order_type: type, status }) ||
+                status === "pending")) ||
             (type === "standard" && status === "pending")
           );
         });

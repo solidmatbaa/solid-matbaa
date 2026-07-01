@@ -13,8 +13,10 @@ import { AdminOrderItems } from "@/components/admin/AdminOrderItems";
 import {
   AdminPaymentVerification,
 } from "@/components/admin/AdminPaymentVerification";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { apiFetch, formatCurrency, getLocalizedText } from "@/lib/utils";
-import { getNextStatuses, isCustomPaid, isOrderPendingApproval } from "@/lib/orders";
+import { getNextStatuses, isCustomPaid } from "@/lib/orders";
+import { normalizeOrderStatus } from "@/lib/order-transitions";
 import { getOrderTracking } from "@/lib/shipping";
 import { formatAdminOrderAddress } from "@/lib/address-data";
 import { getOrderDesignFileUrl } from "@/lib/order-files";
@@ -57,8 +59,6 @@ export default function AdminPage() {
   } | null>(null);
   const [returnActionId, setReturnActionId] = useState<string | null>(null);
   const [shippingModal, setShippingModal] = useState<string | null>(null);
-  const [approveModal, setApproveModal] = useState<Order | null>(null);
-  const [approveForm, setApproveForm] = useState({ price: "", adminNotes: "" });
   const [shippingForm, setShippingForm] = useState<ShippingInfo>({
     tracking_number: "",
     shipping_carrier: "",
@@ -159,6 +159,57 @@ export default function AdminPage() {
     if (!options?.silent) setLoading(false);
   }
 
+  function orderNeedsApproval(order: Order): boolean {
+    const status = normalizeOrderStatus(order.status);
+    return status === "pending_approval";
+  }
+
+  async function handleApproveOrder(orderId: string) {
+    setActionError("");
+    setApprovingOrderId(orderId);
+
+    const supabase = createSupabaseClient();
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "pending_payment", updated_at: new Date().toISOString() })
+      .eq("id", orderId);
+
+    setApprovingOrderId(null);
+
+    if (error) {
+      console.error("[admin] approve order failed:", error);
+      setActionError(error.message);
+      return;
+    }
+
+    setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
+    router.refresh();
+    await loadData({ silent: true });
+  }
+
+  async function handleRejectOrder(orderId: string) {
+    setActionError("");
+    setRejectingOrderId(orderId);
+
+    const supabase = createSupabaseClient();
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("id", orderId);
+
+    setRejectingOrderId(null);
+
+    if (error) {
+      console.error("[admin] reject order failed:", error);
+      setActionError(error.message);
+      return;
+    }
+
+    setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
+    router.refresh();
+    await loadData({ silent: true });
+  }
+
   async function updateOrderStatus(
     orderId: string,
     status: OrderStatus,
@@ -222,70 +273,6 @@ export default function AdminPage() {
     }
 
     setActionError(error ?? t("actionFailed"));
-  }
-
-  async function submitApprove(
-    order: Order,
-    payload?: { price?: number; adminNotes?: string }
-  ) {
-    setActionError("");
-    setApprovingOrderId(order.id);
-
-    try {
-      const { ok, error, data } = await apiFetch<{
-        orderId: string;
-        status: OrderStatus;
-        total_amount?: number;
-      }>(`/api/admin/orders/${encodeURIComponent(order.id)}/approve`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload ?? {}),
-      });
-
-      if (ok) {
-        const newStatus =
-          data?.status ?? (order.order_type === "custom" ? "pending_payment" : "approved");
-        if (order.order_type === "custom") {
-          setNewOrders((prev) => prev.filter((o) => o.id !== order.id));
-        } else if (newStatus === "approved") {
-          setNewOrders((prev) => prev.filter((o) => o.id !== order.id));
-          const approvedOrder: Order = {
-            ...order,
-            status: newStatus,
-            total_amount: data?.total_amount ?? order.total_amount,
-            admin_notes: payload?.adminNotes?.trim() || order.admin_notes,
-          };
-          setApprovedOrders((prev) => [approvedOrder, ...prev.filter((o) => o.id !== order.id)]);
-        } else {
-          setNewOrders((prev) => prev.filter((o) => o.id !== order.id));
-        }
-        setApproveModal(null);
-        setApproveForm({ price: "", adminNotes: "" });
-        router.refresh();
-        await loadData({ silent: true });
-        return;
-      }
-
-      setActionError(error ?? t("actionFailed"));
-    } catch (err) {
-      console.error("[admin] approveOrder failed:", err);
-      setActionError(t("actionFailed"));
-    } finally {
-      setApprovingOrderId(null);
-    }
-  }
-
-  function startApprove(order: Order) {
-    if (order.order_type === "custom") {
-      setApproveModal(order);
-      setApproveForm({ price: "", adminNotes: "" });
-      return;
-    }
-    void submitApprove(order);
-  }
-
-  async function approveOrder(order: Order) {
-    startApprove(order);
   }
 
   function handleStatusChange(orderId: string, status: OrderStatus) {
@@ -367,48 +354,7 @@ export default function AdminPage() {
     setArchiveResult((prev) => (prev?.id === orderId ? { ...prev, ...patch } : prev));
   }
 
-  function renderPendingApprovalActions(order: Order) {
-    if (!isOrderPendingApproval(order)) return null;
-
-    return (
-      <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-amber-700 mr-auto">
-          {tOrders("statuses.pending_approval")}
-        </span>
-        <Button
-          size="sm"
-          onClick={() => startApprove(order)}
-          loading={approvingOrderId === order.id}
-        >
-          {approvingOrderId === order.id ? t("approving") : t("approveOrder")}
-        </Button>
-        <Button
-          size="sm"
-          variant="danger"
-          loading={rejectingOrderId === order.id}
-          onClick={async () => {
-            const reason = window.prompt(t("rejectionReasonPrompt"));
-            if (reason === null) return;
-            setRejectingOrderId(order.id);
-            try {
-              await updateOrderStatus(
-                order.id,
-                "rejected",
-                undefined,
-                reason.trim() || undefined
-              );
-            } finally {
-              setRejectingOrderId(null);
-            }
-          }}
-        >
-          {t("rejectOrder")}
-        </Button>
-      </div>
-    );
-  }
-
-  function renderOrderCard(order: Order, showActions = false) {
+  function renderOrderCard(order: Order, showActions = false, embedded = false) {
     const customer = order.profiles as {
       full_name?: string;
       email?: string;
@@ -421,8 +367,8 @@ export default function AdminPage() {
     const designUrl = getOrderDesignFileUrl(order);
     const receiptAccessUrl = paymentReceiptAccessUrl(order.receipt_url);
 
-    return (
-      <div key={order.id} className="card-soft hover:shadow-md transition-shadow">
+    const cardBody = (
+      <>
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div>
             <p className="font-mono font-bold text-brand-700">{order.id}</p>
@@ -555,7 +501,7 @@ export default function AdminPage() {
                   </Button>
                 </div>
               </div>
-            ) : isOrderPendingApproval(order) ? (
+            ) : orderNeedsApproval(order) ? (
               <span className="text-sm font-medium text-amber-700">
                 {tOrders("statuses.pending_approval")}
               </span>
@@ -577,8 +523,6 @@ export default function AdminPage() {
           )}
         </div>
 
-        {renderPendingApprovalActions(order)}
-
         <AdminOrderItems
           order={order}
           locale={locale}
@@ -596,6 +540,14 @@ export default function AdminPage() {
             externalLink: t("externalLink"),
           }}
         />
+      </>
+    );
+
+    if (embedded) return cardBody;
+
+    return (
+      <div key={order.id} className="card-soft hover:shadow-md transition-shadow">
+        {cardBody}
       </div>
     );
   }
@@ -622,7 +574,33 @@ export default function AdminPage() {
               <p className="text-gray-500 py-12 text-center card-soft">{t("noNewOrders")}</p>
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {newOrders.map((order) => renderOrderCard(order, true))}
+                {newOrders.map((order) => (
+                  <div key={order.id} className="card-soft hover:shadow-md transition-shadow">
+                    {orderNeedsApproval(order) && (
+                      <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50/60 px-4 py-3 -mx-4 -mt-4 rounded-t-2xl">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-amber-800 mr-auto">
+                          {tOrders("statuses.pending_approval")}
+                        </span>
+                        <Button
+                          size="sm"
+                          onClick={() => void handleApproveOrder(order.id)}
+                          loading={approvingOrderId === order.id}
+                        >
+                          {approvingOrderId === order.id ? t("approving") : t("approveOrder")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => void handleRejectOrder(order.id)}
+                          loading={rejectingOrderId === order.id}
+                        >
+                          {t("rejectOrder")}
+                        </Button>
+                      </div>
+                    )}
+                    {renderOrderCard(order, true, true)}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -795,73 +773,6 @@ export default function AdminPage() {
                 {t("saveShipping")}
               </Button>
               <Button variant="secondary" onClick={() => setShippingModal(null)}>
-                {t("cancelEdit")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {approveModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="card w-full max-w-md">
-            <h3 className="font-semibold text-gray-900 mb-1">{t("approveCustomOrder")}</h3>
-            <p className="text-sm text-gray-500 font-mono mb-4">{approveModal.id}</p>
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t("quotedPrice")} (EUR)
-                </label>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  value={approveForm.price}
-                  onChange={(e) => setApproveForm({ ...approveForm, price: e.target.value })}
-                  placeholder="0.00"
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t("adminNotes")}
-                </label>
-                <textarea
-                  value={approveForm.adminNotes}
-                  onChange={(e) =>
-                    setApproveForm({ ...approveForm, adminNotes: e.target.value })
-                  }
-                  rows={3}
-                  placeholder={t("adminNotesPlaceholder")}
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                fullWidth
-                loading={approvingOrderId === approveModal.id}
-                onClick={() => {
-                  const price = parseFloat(approveForm.price);
-                  if (!price || price <= 0) {
-                    setActionError(t("priceRequired"));
-                    return;
-                  }
-                  void submitApprove(approveModal, {
-                    price,
-                    adminNotes: approveForm.adminNotes.trim() || undefined,
-                  });
-                }}
-              >
-                {approvingOrderId === approveModal.id ? t("approving") : t("approveOrder")}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setApproveModal(null);
-                  setApproveForm({ price: "", adminNotes: "" });
-                }}
-              >
                 {t("cancelEdit")}
               </Button>
             </div>
