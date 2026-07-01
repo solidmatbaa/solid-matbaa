@@ -254,6 +254,7 @@
     "trackShipment": "تتبع الشحنة",
     "statuses": {
       "pending": "قيد الانتظار",
+      "pending_approval": "في انتظار الموافقة",
       "approved": "معتمد",
       "waiting_for_payment": "في انتظار الدفع",
       "payment_submitted": "تم إرسال الدفع",
@@ -264,6 +265,9 @@
       "rejected": "مرفوض"
     },
     "orderNow": "اطلب الآن",
+    "iban": "رقم IBAN",
+    "awaitingQuoteApproval": "يتم مراجعة عرض السعر. سنبلغك عند جاهزية الدفع.",
+    "paymentReady": "تم اعتماد العرض — حوّل المبلغ عبر IBAN أدناه ثم ارفع إيصال الدفع.",
     "returnStatuses": {
       "pending": "تم طلب الاسترداد",
       "approved": "تمت الموافقة على الاسترداد",
@@ -358,6 +362,8 @@
     "newOrders": "طلبات جديدة",
     "approvedOrders": "الطلبات المعتمدة",
     "noNewOrders": "لا توجد طلبات جديدة",
+    "waitingForPayment": "في انتظار الدفع",
+    "noWaitingPayment": "لا توجد طلبات في انتظار الدفع",
     "noApprovedOrders": "لا توجد طلبات معتمدة",
     "approveOrder": "موافقة",
     "approving": "جاري الموافقة…",

@@ -24,6 +24,7 @@ import type { Order, Return, OrderStatus, Settings, Product, Locale, ShippingInf
 
 type AdminTab =
   | "newOrders"
+  | "waitingPayment"
   | "approvedOrders"
   | "products"
   | "content"
@@ -39,6 +40,7 @@ export default function AdminPage() {
 
   const [activeTab, setActiveTab] = useState<AdminTab>("newOrders");
   const [newOrders, setNewOrders] = useState<Order[]>([]);
+  const [waitingPaymentOrders, setWaitingPaymentOrders] = useState<Order[]>([]);
   const [approvedOrders, setApprovedOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [returns, setReturns] = useState<Return[]>([]);
@@ -67,6 +69,7 @@ export default function AdminPage() {
 
   const tabs = [
     { id: "newOrders", label: t("newOrders") },
+    { id: "waitingPayment", label: t("waitingForPayment") },
     { id: "approvedOrders", label: t("approvedOrders") },
     { id: "products", label: t("products") },
     { id: "content", label: t("websiteContent") },
@@ -85,6 +88,7 @@ export default function AdminPage() {
 
     const endpoints = {
       newOrders: "/api/admin/orders?section=new",
+      waitingPayment: "/api/admin/orders?section=waitingPayment",
       approvedOrders: "/api/admin/orders?section=approved",
       products: "/api/products",
       pendingReturns: "/api/returns?section=returns",
@@ -94,6 +98,7 @@ export default function AdminPage() {
 
     const settled = await Promise.allSettled([
       apiFetch<Order[]>(endpoints.newOrders),
+      apiFetch<Order[]>(endpoints.waitingPayment),
       apiFetch<Order[]>(endpoints.approvedOrders),
       apiFetch<Product[]>(endpoints.products),
       apiFetch<Return[]>(endpoints.pendingReturns),
@@ -108,11 +113,12 @@ export default function AdminPage() {
     };
 
     const newRes = unwrap<Order[]>(settled[0], "newOrders");
-    const approvedRes = unwrap<Order[]>(settled[1], "approvedOrders");
-    const productsRes = unwrap<Product[]>(settled[2], "products");
-    const pendingReturnsRes = unwrap<Return[]>(settled[3], "pendingReturns");
-    const approvedReturnsRes = unwrap<Return[]>(settled[4], "approvedReturns");
-    const settingsRes = unwrap<Settings>(settled[5], "settings");
+    const waitingPaymentRes = unwrap<Order[]>(settled[1], "waitingPayment");
+    const approvedRes = unwrap<Order[]>(settled[2], "approvedOrders");
+    const productsRes = unwrap<Product[]>(settled[3], "products");
+    const pendingReturnsRes = unwrap<Return[]>(settled[4], "pendingReturns");
+    const approvedReturnsRes = unwrap<Return[]>(settled[5], "approvedReturns");
+    const settingsRes = unwrap<Settings>(settled[6], "settings");
 
     if (newRes.error?.includes("Forbidden") || newRes.error?.includes("Unauthorized")) {
       router.push("/auth/login");
@@ -122,6 +128,7 @@ export default function AdminPage() {
 
     const failures = Object.entries({
       newOrders: newRes,
+      waitingPayment: waitingPaymentRes,
       approvedOrders: approvedRes,
       products: productsRes,
       pendingReturns: pendingReturnsRes,
@@ -138,6 +145,7 @@ export default function AdminPage() {
     }
 
     if (newRes.data) setNewOrders(newRes.data);
+    if (waitingPaymentRes.data) setWaitingPaymentOrders(waitingPaymentRes.data);
     if (approvedRes.data) setApprovedOrders(approvedRes.data);
     if (productsRes.data) setProducts(productsRes.data);
     if (pendingReturnsRes.data) setReturns(pendingReturnsRes.data);
@@ -177,20 +185,29 @@ export default function AdminPage() {
       setShippingForm({ tracking_number: "", shipping_carrier: "", shipping_url: "" });
       if (status === "rejected") {
         setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
+      } else if (status === "waiting_for_payment") {
+        setWaitingPaymentOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? {
+                  ...o,
+                  status,
+                  receipt_url: null,
+                  admin_notes: rejectionReason ?? o.admin_notes,
+                }
+              : o
+          )
+        );
+        setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
       } else if (status === "processing") {
-        const moved = newOrders.find((o) => o.id === orderId);
+        const moved =
+          waitingPaymentOrders.find((o) => o.id === orderId) ??
+          newOrders.find((o) => o.id === orderId);
+        setWaitingPaymentOrders((prev) => prev.filter((o) => o.id !== orderId));
         setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
         if (moved) {
           setApprovedOrders((prev) => [{ ...moved, status }, ...prev.filter((o) => o.id !== orderId)]);
         }
-      } else if (status === "waiting_for_payment") {
-        setNewOrders((prev) =>
-          prev.map((o) =>
-            o.id === orderId
-              ? { ...o, status, receipt_url: null, payment_iban: null, admin_notes: rejectionReason ?? o.admin_notes }
-              : o
-          )
-        );
       } else {
         setApprovedOrders((prev) =>
           prev.map((o) => {
@@ -240,18 +257,17 @@ export default function AdminPage() {
       if (ok) {
         const newStatus = data?.status ?? (order.order_type === "custom" ? "waiting_for_payment" : "approved");
         if (order.order_type === "custom" && newStatus === "waiting_for_payment") {
-          setNewOrders((prev) =>
-            prev.map((o) =>
-              o.id === order.id
-                ? {
-                    ...o,
-                    status: newStatus,
-                    total_amount: data?.total_amount ?? order.total_amount,
-                    admin_notes: payload?.adminNotes?.trim() || order.admin_notes,
-                  }
-                : o
-            )
-          );
+          setNewOrders((prev) => prev.filter((o) => o.id !== order.id));
+          const approvedOrder: Order = {
+            ...order,
+            status: newStatus,
+            total_amount: data?.total_amount ?? order.total_amount,
+            admin_notes: payload?.adminNotes?.trim() || order.admin_notes,
+          };
+          setWaitingPaymentOrders((prev) => [
+            approvedOrder,
+            ...prev.filter((o) => o.id !== order.id),
+          ]);
         } else if (newStatus === "approved") {
           setNewOrders((prev) => prev.filter((o) => o.id !== order.id));
           const approvedOrder: Order = {
@@ -369,8 +385,13 @@ export default function AdminPage() {
 
   function patchOrderInLists(orderId: string, patch: Partial<Order>) {
     setNewOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...patch } : o)));
+    setWaitingPaymentOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...patch } : o)));
     setApprovedOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, ...patch } : o)));
     setArchiveResult((prev) => (prev?.id === orderId ? { ...prev, ...patch } : prev));
+  }
+
+  function isAwaitingQuoteApproval(order: Order) {
+    return order.status === "pending_approval" || order.status === "pending";
   }
 
   async function savePaymentDetails(orderId: string, payload: AdminPaymentDetailsPayload) {
@@ -518,7 +539,7 @@ export default function AdminPage() {
           </div>
 
           {showActions ? (
-            order.status === "pending" ? (
+            isAwaitingQuoteApproval(order) ? (
               <div className="flex flex-wrap gap-2">
                 <Button
                   size="sm"
@@ -641,6 +662,17 @@ export default function AdminPage() {
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 {newOrders.map((order) => renderOrderCard(order, true))}
+              </div>
+            )}
+          </div>
+        ) : activeTab === "waitingPayment" ? (
+          <div className="space-y-6">
+            <h2 className="font-semibold text-gray-900 text-lg">{t("waitingForPayment")}</h2>
+            {waitingPaymentOrders.length === 0 ? (
+              <p className="text-gray-500 py-12 text-center card-soft">{t("noWaitingPayment")}</p>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {waitingPaymentOrders.map((order) => renderOrderCard(order, true))}
               </div>
             )}
           </div>

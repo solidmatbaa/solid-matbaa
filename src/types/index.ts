@@ -6,6 +6,7 @@ export type UserRole = "customer" | "admin";
 
 export type OrderStatus =
   | "pending"
+  | "pending_approval"
   | "approved"
   | "waiting_for_payment"
   | "payment_submitted"

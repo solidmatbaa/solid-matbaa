@@ -15,10 +15,12 @@ interface OrderTableProps {
   onRequestReturn?: (orderId: string) => void;
   showReturnButton?: boolean;
   showCustomPayment?: boolean;
+  paymentIban?: string | null;
 }
 
 const statusColors: Record<OrderStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800",
+  pending_approval: "bg-amber-100 text-amber-800",
   approved: "bg-blue-100 text-blue-800",
   waiting_for_payment: "bg-sky-100 text-sky-800",
   payment_submitted: "bg-orange-100 text-orange-800",
@@ -35,6 +37,7 @@ export function OrderTable({
   onRequestReturn,
   showReturnButton,
   showCustomPayment,
+  paymentIban,
 }: OrderTableProps) {
   const t = useTranslations("orders");
   const locale = useLocale() as Locale;
@@ -92,6 +95,12 @@ export function OrderTable({
                       {t("refundRequested")}
                     </p>
                   )}
+                  {showCustomPayment && order.status === "pending_approval" && (
+                    <p className="mt-1 text-xs text-amber-700">{t("awaitingQuoteApproval")}</p>
+                  )}
+                  {showCustomPayment && order.status === "waiting_for_payment" && (
+                    <p className="mt-1 text-xs text-sky-700">{t("paymentReady")}</p>
+                  )}
                 </td>
                 <td className="py-3 px-2 font-medium">{formatCurrency(order.total_amount, locale)}</td>
                 <td className="py-3 px-2 text-gray-600">
@@ -119,12 +128,19 @@ export function OrderTable({
                 {showCustomPayment && (
                   <td className="py-3 px-2">
                     {payable ? (
-                      <MotionLink
-                        href={`/orders/${order.id}/payment`}
-                        className="inline-flex px-3 py-1.5 bg-brand-500 text-gray-900 text-xs font-semibold rounded-lg hover:bg-brand-600 whitespace-nowrap"
-                      >
-                        {t("orderNow")}
-                      </MotionLink>
+                      <div className="space-y-2">
+                        {paymentIban && order.status === "waiting_for_payment" && (
+                          <p className="text-xs text-gray-600 font-mono break-all max-w-[200px]">
+                            {t("iban")}: {paymentIban}
+                          </p>
+                        )}
+                        <MotionLink
+                          href={`/orders/${order.id}/payment`}
+                          className="inline-flex px-3 py-1.5 bg-brand-500 text-gray-900 text-xs font-semibold rounded-lg hover:bg-brand-600 whitespace-nowrap"
+                        >
+                          {t("orderNow")}
+                        </MotionLink>
+                      </div>
                     ) : null}
                   </td>
                 )}

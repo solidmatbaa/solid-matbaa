@@ -437,8 +437,8 @@ export async function fetchAdminSectionCounts(
   const pipeline = expandStatusesForQuery(["approved", "processing", "shipping"]);
 
   return {
-    newCustom:
-      (await countOrders("custom", expandStatusesForQuery(["pending"]), false)) +
+    newCustom: await countOrders("custom", expandStatusesForQuery(["pending_approval"]), false),
+    waitingPaymentCustom:
       (await countOrders("custom", expandStatusesForQuery(["waiting_for_payment"]), false)) +
       (await countOrders("custom", expandStatusesForQuery(["payment_submitted"]), false)),
     approvedCustom: await countOrders(

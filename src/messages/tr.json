@@ -254,6 +254,7 @@
     "trackShipment": "Kargoyu takip et",
     "statuses": {
       "pending": "Beklemede",
+      "pending_approval": "Onay Bekliyor",
       "approved": "Onaylandı",
       "waiting_for_payment": "Ödeme Bekleniyor",
       "payment_submitted": "Ödeme Gönderildi",
@@ -264,6 +265,9 @@
       "rejected": "Reddedildi"
     },
     "orderNow": "Şimdi Sipariş Ver",
+    "iban": "IBAN",
+    "awaitingQuoteApproval": "Teklifiniz inceleniyor. Ödeme hazır olduğunda bilgilendirileceksiniz.",
+    "paymentReady": "Teklif onaylandı — aşağıdaki IBAN ile ödeme yapın ve makbuzunuzu yükleyin.",
     "returnStatuses": {
       "pending": "İade Talep Edildi",
       "approved": "İade Onaylandı",
@@ -355,9 +359,11 @@
     "returns": "İadeler",
     "orders": "Siparişler",
     "activeOrders": "Aktif Siparişler",
-    "newOrders": "Yeni Siparişler",
+    "newOrders": "Yeni Talepler",
     "approvedOrders": "Onaylanan Siparişler",
-    "noNewOrders": "Yeni sipariş yok",
+    "noNewOrders": "Yeni talep yok",
+    "waitingForPayment": "Ödeme Bekleniyor",
+    "noWaitingPayment": "Ödeme bekleyen sipariş yok",
     "noApprovedOrders": "Onaylanan sipariş yok",
     "approveOrder": "Onayla",
     "approving": "Onaylanıyor…",

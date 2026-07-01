@@ -9,7 +9,7 @@ import { OrderTable } from "@/components/orders/OrderTable";
 import { ReturnsTable } from "@/components/orders/ReturnsTable";
 import { apiFetch } from "@/lib/utils";
 import { filterOrdersByTab, filterReturnsByTab } from "@/lib/orders";
-import type { Order, Return, OrderTab } from "@/types";
+import type { Order, Return, OrderTab, Settings } from "@/types";
 
 export default function OrdersPage() {
   const t = useTranslations("orders");
@@ -17,6 +17,7 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<OrderTab>("active");
   const [orders, setOrders] = useState<Order[]>([]);
   const [returns, setReturns] = useState<Return[]>([]);
+  const [paymentIban, setPaymentIban] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [returnModal, setReturnModal] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState("");
@@ -30,12 +31,14 @@ export default function OrdersPage() {
   ];
 
   async function loadData() {
-    const [ordersRes, returnsRes] = await Promise.all([
+    const [ordersRes, returnsRes, settingsRes] = await Promise.all([
       apiFetch<Order[]>("/api/orders"),
       apiFetch<Return[]>("/api/returns"),
+      apiFetch<Settings>("/api/settings"),
     ]);
     if (ordersRes.data) setOrders(ordersRes.data);
     if (returnsRes.data) setReturns(returnsRes.data);
+    if (settingsRes.data?.iban) setPaymentIban(settingsRes.data.iban);
   }
 
   useEffect(() => {
@@ -92,6 +95,7 @@ export default function OrdersPage() {
             orders={filteredOrders}
             returns={returns}
             showCustomPayment={activeTab === "custom"}
+            paymentIban={paymentIban}
             showReturnButton={activeTab === "history"}
             onRequestReturn={(id) => {
               setSubmitError("");

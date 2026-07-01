@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { transitionOrderStatus } from "@/lib/order-service";
+import { normalizeOrderStatus } from "@/lib/order-transitions";
 import type { ApiResponse, OrderStatus } from "@/types";
 
 const approveBodySchema = z.object({
@@ -87,6 +88,25 @@ export async function POST(
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Forbidden" },
         { status: 403 }
+      );
+    }
+
+    const normalized = normalizeOrderStatus(String(orderBefore.status));
+    if (
+      orderBefore.order_type === "custom" &&
+      normalized !== "pending_approval" &&
+      normalized !== "pending"
+    ) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "Only quote requests awaiting approval can be approved" },
+        { status: 400 }
+      );
+    }
+
+    if (orderBefore.order_type === "standard" && normalized !== "pending") {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "Only pending orders can be approved" },
+        { status: 400 }
       );
     }
 

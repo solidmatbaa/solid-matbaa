@@ -253,6 +253,7 @@
     "adminNotes": "Admin notes",
     "statuses": {
       "pending": "Pending",
+      "pending_approval": "Awaiting Approval",
       "approved": "Approved",
       "waiting_for_payment": "Waiting for Payment",
       "payment_submitted": "Payment Submitted",
@@ -263,6 +264,9 @@
       "rejected": "Rejected"
     },
     "orderNow": "Order Now",
+    "iban": "IBAN",
+    "awaitingQuoteApproval": "Your quote is being reviewed. We will notify you when payment is ready.",
+    "paymentReady": "Quote approved — transfer payment using the IBAN below, then upload your receipt.",
     "trackShipment": "Track shipment",
     "returnStatuses": {
       "pending": "Refund Requested",
@@ -355,9 +359,11 @@
     "returns": "Returns",
     "orders": "Orders",
     "activeOrders": "Active Orders",
-    "newOrders": "New Orders",
+    "newOrders": "New Requests",
     "approvedOrders": "Approved Orders",
-    "noNewOrders": "No new orders",
+    "noNewOrders": "No new requests",
+    "waitingForPayment": "Waiting for Payment",
+    "noWaitingPayment": "No orders waiting for payment",
     "noApprovedOrders": "No approved orders",
     "approveOrder": "Approve",
     "approving": "Approving…",

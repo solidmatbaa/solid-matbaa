@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       id: orderIdStr,
       tenant_id: profile.tenant_id,
       user_id: user.id,
-      status: "pending",
+      status: "pending_approval",
       order_type: "custom",
       total_amount: 0,
       notes: `Custom print quote — Qty: ${qty}, Size: ${designSize}`,

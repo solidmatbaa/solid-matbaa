@@ -3,6 +3,7 @@ import type { Order, OrderStatus, OrderTab, Return, ReturnStatus } from "@/types
 
 const ACTIVE_STATUSES: OrderStatus[] = [
   "pending",
+  "pending_approval",
   "approved",
   "waiting_for_payment",
   "payment_submitted",
@@ -116,6 +117,7 @@ export async function generateOrderId(
 
 export const ORDER_STATUS_FLOW: OrderStatus[] = [
   "pending",
+  "pending_approval",
   "approved",
   "waiting_for_payment",
   "payment_submitted",

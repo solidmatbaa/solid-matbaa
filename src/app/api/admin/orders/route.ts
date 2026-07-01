@@ -17,6 +17,7 @@ const ORDER_SELECT = "*, order_items(*), profiles(full_name, email, phone, addre
 
 const VALID_SECTIONS = new Set<string>([
   "newCustom",
+  "waitingPaymentCustom",
   "approvedCustom",
   "newStandard",
   "approvedStandard",
@@ -25,6 +26,7 @@ const VALID_SECTIONS = new Set<string>([
   "approvedReturns",
   "new",
   "approved",
+  "waitingPayment",
   "all",
 ]);
 
@@ -51,9 +53,10 @@ async function requireAdmin() {
   return { profile: profile!, supabase };
 }
 
-function mapLegacySection(section: string): AdminOrderSection | "history" | "allPending" | "allApproved" {
+function mapLegacySection(section: string): AdminOrderSection | "history" | "allPending" | "allApproved" | "allWaitingPayment" {
   if (section === "new") return "allPending";
   if (section === "approved") return "allApproved";
+  if (section === "waitingPayment") return "allWaitingPayment";
   if (section === "all") return "allPending";
   return section as AdminOrderSection;
 }
@@ -106,13 +109,15 @@ export async function GET(request: Request) {
     const section = mapLegacySection(sectionParam);
     const admin = createAdminClient();
 
-    if (section === "allPending" || section === "allApproved") {
+    if (section === "allPending" || section === "allApproved" || section === "allWaitingPayment") {
       const orderStatuses =
         section === "allPending"
-          ? (["pending", "waiting_for_payment", "payment_submitted"] as const)
-          : (["approved", "processing", "shipping"] as const);
+          ? (["pending", "pending_approval"] as const)
+          : section === "allWaitingPayment"
+            ? (["waiting_for_payment", "payment_submitted"] as const)
+            : (["approved", "processing", "shipping"] as const);
 
-      const { data: orders, error } = await admin
+      let query = admin
         .from("orders")
         .select(ORDER_SELECT)
         .eq("tenant_id", tenantId)
@@ -120,12 +125,30 @@ export async function GET(request: Request) {
         .in("status", expandStatusesForQuery([...orderStatuses]))
         .order("created_at", { ascending: false });
 
+      if (section === "allWaitingPayment") {
+        query = query.eq("order_type", "custom");
+      }
+
+      const { data: ordersRaw, error } = await query;
+
       if (error) {
         console.error("[admin/orders] orders query failed:", error.message);
         return NextResponse.json<ApiResponse<null>>(
           { success: false, error: error.message },
           { status: 500 }
         );
+      }
+
+      let orders = ordersRaw ?? [];
+      if (section === "allPending") {
+        orders = orders.filter((order) => {
+          const status = normalizeOrderStatus(String(order.status));
+          const type = String(order.order_type);
+          return (
+            (type === "custom" && status === "pending_approval") ||
+            (type === "standard" && status === "pending")
+          );
+        });
       }
 
       return NextResponse.json({
