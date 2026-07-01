@@ -490,27 +490,20 @@ export async function fetchAdminSectionCounts(
     return count ?? 0;
   };
 
-  const { count: historyCount } = await admin
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId)
-    .eq("is_archived", true);
-
-  const pipeline = expandStatusesForQuery(["approved", "processing", "shipping"]);
-
   return {
-    newCustom: await countOrders("custom", expandStatusesForQuery(["pending_approval"]), false),
-    waitingPaymentCustom: 0,
-    approvedCustom: await countOrders(
-      "custom",
-      expandStatusesForQuery(["paid", "processing", "shipping"]),
-      false
-    ),
-    newStandard: await countOrders("standard", expandStatusesForQuery(["pending"]), false),
-    approvedStandard: await countOrders("standard", pipeline, false),
+    newCustom: await countOrders("custom", ["pending_approval"], false),
+    waitingPaymentCustom: await countOrders("custom", ["pending_payment"], false),
+    approvedCustom: await countOrders("custom", ["in_progress"], false),
+    newStandard: await countOrders("standard", ["pending_approval"], false),
+    approvedStandard: await countOrders("standard", ["in_progress"], false),
     returns: await countReturns(["pending"], false),
     approvedReturns: await countReturns(["approved", "shipping", "inspecting"], false),
-    history: historyCount ?? 0,
+    history: await admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("status", "delivered")
+      .then(({ count }) => count ?? 0),
   };
 }
 
@@ -560,7 +553,7 @@ export async function submitCustomOrderPayment(
     return { ok: false, error: "Failed to upload payment receipt", status: 500 };
   }
 
-  const paymentDbStatus = toDbOrderStatus("paid");
+  const paymentDbStatus = toDbOrderStatus("pending_payment");
 
   const { error: updateError } = await admin
     .from("orders")

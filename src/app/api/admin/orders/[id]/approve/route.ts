@@ -99,7 +99,11 @@ export async function POST(
       );
     }
 
-    if (orderBefore.order_type === "standard" && normalized !== "pending") {
+    if (
+      orderBefore.order_type === "standard" &&
+      normalized !== "pending_approval" &&
+      normalized !== "pending"
+    ) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Only pending orders can be approved" },
         { status: 400 }
@@ -116,7 +120,7 @@ export async function POST(
     }
 
     const targetStatus: OrderStatus =
-      orderBefore.order_type === "custom" ? "pending_payment" : "approved";
+      orderBefore.order_type === "custom" ? "pending_payment" : "in_progress";
 
     const result = await transitionOrderStatus(admin, orderId, targetStatus, {
       price,

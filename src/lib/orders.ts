@@ -17,11 +17,42 @@ export function isOrderPendingApproval(order: { status: string }): boolean {
   return normalizeOrderStatus(order.status) === "pending_approval";
 }
 
-/** Custom order with payment submitted — ready for admin to process. */
-export function isCustomPaid(order: { order_type: string; status: string }): boolean {
+/** Custom order with payment receipt uploaded — awaiting admin review in New Orders. */
+export function isCustomPaymentAwaitingReview(order: {
+  order_type: string;
+  status: string;
+  receipt_url?: string | null;
+}): boolean {
   if (order.order_type !== "custom") return false;
   const status = normalizeOrderStatus(order.status);
-  return status === "paid" || status === "payment_submitted";
+  return status === "pending_payment" && !!order.receipt_url;
+}
+
+/** Pre-made design order awaiting admin approval. */
+export function isStandardAwaitingApproval(order: {
+  order_type: string;
+  status: string;
+}): boolean {
+  if (order.order_type !== "standard") return false;
+  const status = normalizeOrderStatus(order.status);
+  return status === "pending_approval" || status === "pending";
+}
+
+/** Orders shown in the admin New Orders tab. */
+export function belongsInAdminNewOrders(order: {
+  order_type: string;
+  status: string;
+  receipt_url?: string | null;
+}): boolean {
+  const status = normalizeOrderStatus(order.status);
+  if (status === "pending_approval") return true;
+  if (status === "pending" && order.order_type === "standard") return true;
+  return isCustomPaymentAwaitingReview(order);
+}
+
+/** Orders shown in the admin Approved Orders tab. */
+export function belongsInAdminApprovedOrders(order: { status: string }): boolean {
+  return normalizeOrderStatus(order.status) === "in_progress";
 }
 
 /** Custom order awaiting customer bank transfer. */
@@ -171,6 +202,15 @@ export const RETURN_STATUS_FLOW: ReturnStatus[] = [
   "inspecting",
   "refunded",
 ];
+
+/** Status options for the admin Approved Orders tab (in_progress only). */
+export function getApprovedTabNextStatuses(current: OrderStatus | string): OrderStatus[] {
+  const normalized = normalizeOrderStatus(String(current));
+  if (normalized === "in_progress") {
+    return ["delivered"];
+  }
+  return [];
+}
 
 export function getNextStatuses(current: OrderStatus | string): OrderStatus[] {
   const normalized = normalizeOrderStatus(String(current));

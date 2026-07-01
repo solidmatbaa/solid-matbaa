@@ -110,6 +110,8 @@
     "price": "Price",
     "from": "From",
     "customOrder": "Custom Order",
+    "premadeDesign": "Pre-made Design",
+    "paymentReceiptSubmitted": "Payment receipt submitted",
     "selectQuantity": "Select Quantity"
   },
   "cart": {
@@ -256,6 +258,7 @@
       "pending": "Pending",
       "pending_approval": "Awaiting Approval",
       "pending_payment": "Pending Payment",
+      "in_progress": "In Progress",
       "paid": "Paid",
       "approved": "Approved",
       "waiting_for_payment": "Waiting for Payment",
@@ -367,6 +370,7 @@
     "newOrders": "New Requests",
     "approvedOrders": "Approved Orders",
     "noNewOrders": "No new requests",
+    "noArchivedOrders": "No delivered orders in archive",
     "waitingForPayment": "Waiting for Payment",
     "noWaitingPayment": "No orders waiting for payment",
     "noApprovedOrders": "No approved orders",
@@ -383,6 +387,8 @@
     "quantity": "Quantity",
     "orderType": "Order Type",
     "customOrder": "Custom Order",
+    "premadeDesign": "Pre-made Design",
+    "paymentReceiptSubmitted": "Payment receipt submitted",
     "rejectOrder": "Reject",
     "rejectionReasonPrompt": "Enter rejection reason for the customer:",
     "viewReceipt": "View Receipt",

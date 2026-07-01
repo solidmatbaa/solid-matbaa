@@ -15,8 +15,12 @@ import {
 } from "@/components/admin/AdminPaymentVerification";
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { apiFetch, formatCurrency, getLocalizedText } from "@/lib/utils";
-import { getNextStatuses, isCustomPaid } from "@/lib/orders";
-import { normalizeOrderStatus } from "@/lib/order-transitions";
+import {
+  getApprovedTabNextStatuses,
+  isCustomAwaitingApproval,
+  isCustomPaymentAwaitingReview,
+  isStandardAwaitingApproval,
+} from "@/lib/orders";
 import { getOrderTracking } from "@/lib/shipping";
 import { formatAdminOrderAddress } from "@/lib/address-data";
 import { getOrderDesignFileUrl } from "@/lib/order-files";
@@ -42,6 +46,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<AdminTab>("newOrders");
   const [newOrders, setNewOrders] = useState<Order[]>([]);
   const [approvedOrders, setApprovedOrders] = useState<Order[]>([]);
+  const [archiveOrders, setArchiveOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [returns, setReturns] = useState<Return[]>([]);
   const [approvedReturns, setApprovedReturns] = useState<Return[]>([]);
@@ -59,6 +64,8 @@ export default function AdminPage() {
   } | null>(null);
   const [returnActionId, setReturnActionId] = useState<string | null>(null);
   const [shippingModal, setShippingModal] = useState<string | null>(null);
+  const [approveModal, setApproveModal] = useState<Order | null>(null);
+  const [approveForm, setApproveForm] = useState({ price: "", adminNotes: "" });
   const [shippingForm, setShippingForm] = useState<ShippingInfo>({
     tracking_number: "",
     shipping_carrier: "",
@@ -86,6 +93,7 @@ export default function AdminPage() {
     const endpoints = {
       newOrders: "/api/admin/orders?section=new",
       approvedOrders: "/api/admin/orders?section=approved",
+      archiveOrders: "/api/admin/orders?section=archive",
       products: "/api/products",
       pendingReturns: "/api/returns?section=returns",
       approvedReturns: "/api/returns?section=approvedReturns",
@@ -95,6 +103,7 @@ export default function AdminPage() {
     const settled = await Promise.allSettled([
       apiFetch<Order[]>(endpoints.newOrders),
       apiFetch<Order[]>(endpoints.approvedOrders),
+      apiFetch<Order[]>(endpoints.archiveOrders),
       apiFetch<Product[]>(endpoints.products),
       apiFetch<Return[]>(endpoints.pendingReturns),
       apiFetch<Return[]>(endpoints.approvedReturns),
@@ -109,10 +118,11 @@ export default function AdminPage() {
 
     const newRes = unwrap<Order[]>(settled[0], "newOrders");
     const approvedRes = unwrap<Order[]>(settled[1], "approvedOrders");
-    const productsRes = unwrap<Product[]>(settled[2], "products");
-    const pendingReturnsRes = unwrap<Return[]>(settled[3], "pendingReturns");
-    const approvedReturnsRes = unwrap<Return[]>(settled[4], "approvedReturns");
-    const settingsRes = unwrap<Settings>(settled[5], "settings");
+    const archiveRes = unwrap<Order[]>(settled[2], "archiveOrders");
+    const productsRes = unwrap<Product[]>(settled[3], "products");
+    const pendingReturnsRes = unwrap<Return[]>(settled[4], "pendingReturns");
+    const approvedReturnsRes = unwrap<Return[]>(settled[5], "approvedReturns");
+    const settingsRes = unwrap<Settings>(settled[6], "settings");
 
     if (newRes.error?.includes("Forbidden") || newRes.error?.includes("Unauthorized")) {
       router.push("/auth/login");
@@ -123,6 +133,7 @@ export default function AdminPage() {
     const failures = Object.entries({
       newOrders: newRes,
       approvedOrders: approvedRes,
+      archiveOrders: archiveRes,
       products: productsRes,
       pendingReturns: pendingReturnsRes,
       approvedReturns: approvedReturnsRes,
@@ -139,6 +150,7 @@ export default function AdminPage() {
 
     if (newRes.data) setNewOrders(newRes.data);
     if (approvedRes.data) setApprovedOrders(approvedRes.data);
+    if (archiveRes.data) setArchiveOrders(archiveRes.data);
     if (productsRes.data) setProducts(productsRes.data);
     if (pendingReturnsRes.data) setReturns(pendingReturnsRes.data);
     if (approvedReturnsRes.data) setApprovedReturns(approvedReturnsRes.data);
@@ -160,24 +172,97 @@ export default function AdminPage() {
   }
 
   function orderNeedsApproval(order: Order): boolean {
-    const status = normalizeOrderStatus(order.status);
-    return status === "pending_approval";
+    return isCustomAwaitingApproval(order) || isStandardAwaitingApproval(order);
   }
 
-  async function handleApproveOrder(orderId: string) {
+  async function handleApproveStandardOrder(orderId: string) {
     setActionError("");
     setApprovingOrderId(orderId);
+
+    const { ok, error } = await apiFetch<{ orderId: string; status: OrderStatus }>(
+      `/api/admin/orders/${encodeURIComponent(orderId)}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    setApprovingOrderId(null);
+
+    if (!ok) {
+      setActionError(error ?? t("actionFailed"));
+      return;
+    }
+
+    setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
+    router.refresh();
+    await loadData({ silent: true });
+  }
+
+  async function submitCustomApprove(order: Order) {
+    setActionError("");
+    setApprovingOrderId(order.id);
+
+    const price = parseFloat(approveForm.price);
+    if (!price || price <= 0) {
+      setApprovingOrderId(null);
+      setActionError(t("priceRequired"));
+      return;
+    }
+
+    const { ok, error } = await apiFetch<{ orderId: string; status: OrderStatus; total_amount?: number }>(
+      `/api/admin/orders/${encodeURIComponent(order.id)}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          price,
+          adminNotes: approveForm.adminNotes.trim() || undefined,
+        }),
+      }
+    );
+
+    setApprovingOrderId(null);
+
+    if (!ok) {
+      setActionError(error ?? t("actionFailed"));
+      return;
+    }
+
+    setNewOrders((prev) => prev.filter((o) => o.id !== order.id));
+    setApproveModal(null);
+    setApproveForm({ price: "", adminNotes: "" });
+    router.refresh();
+    await loadData({ silent: true });
+  }
+
+  function startApprove(order: Order) {
+    if (order.order_type === "custom") {
+      setApproveModal(order);
+      setApproveForm({ price: "", adminNotes: "" });
+      return;
+    }
+    void handleApproveStandardOrder(order.id);
+  }
+
+  async function handleApproveOrder(order: Order) {
+    startApprove(order);
+  }
+
+  async function handleAcceptCustomPayment(orderId: string) {
+    setActionError("");
+    setPaymentAction({ orderId, type: "accept" });
 
     const supabase = createSupabaseClient();
     const { error } = await supabase
       .from("orders")
-      .update({ status: "pending_payment", updated_at: new Date().toISOString() })
+      .update({ status: "in_progress", updated_at: new Date().toISOString() })
       .eq("id", orderId);
 
-    setApprovingOrderId(null);
+    setPaymentAction(null);
 
     if (error) {
-      console.error("[admin] approve order failed:", error);
       setActionError(error.message);
       return;
     }
@@ -206,6 +291,39 @@ export default function AdminPage() {
     }
 
     setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
+    router.refresh();
+    await loadData({ silent: true });
+  }
+
+  async function handleApprovedStatusUpdate(orderId: string, nextStatus: OrderStatus) {
+    setActionError("");
+    setPaymentAction({ orderId, type: "accept" });
+
+    const supabase = createSupabaseClient();
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        status: nextStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", orderId);
+
+    setPaymentAction(null);
+
+    if (error) {
+      console.error("[admin] approved status update failed:", error);
+      setActionError(error.message);
+      return;
+    }
+
+    if (nextStatus === "delivered") {
+      setApprovedOrders((prev) => prev.filter((o) => o.id !== orderId));
+    } else {
+      setApprovedOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
+      );
+    }
+
     router.refresh();
     await loadData({ silent: true });
   }
@@ -284,12 +402,7 @@ export default function AdminPage() {
   }
 
   async function acceptPayment(orderId: string) {
-    setPaymentAction({ orderId, type: "accept" });
-    try {
-      await updateOrderStatus(orderId, "processing");
-    } finally {
-      setPaymentAction(null);
-    }
+    await handleAcceptCustomPayment(orderId);
   }
 
   async function rejectPayment(orderId: string) {
@@ -297,7 +410,25 @@ export default function AdminPage() {
     if (reason === null) return;
     setPaymentAction({ orderId, type: "reject" });
     try {
-      await updateOrderStatus(orderId, "pending_payment", undefined, reason.trim() || undefined);
+      const supabase = createSupabaseClient();
+      const { error } = await supabase
+        .from("orders")
+        .update({
+          status: "pending_payment",
+          receipt_url: null,
+          admin_notes: reason.trim() || undefined,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+
+      if (error) {
+        setActionError(error.message);
+        return;
+      }
+
+      setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
+      router.refresh();
+      await loadData({ silent: true });
     } finally {
       setPaymentAction(null);
     }
@@ -324,10 +455,10 @@ export default function AdminPage() {
 
   async function searchArchive() {
     if (!archiveSearch.trim()) return;
-    const { data } = await apiFetch<Order>(
-      `/api/orders?orderId=${encodeURIComponent(archiveSearch.trim())}`
+    const { data } = await apiFetch<Order[]>(
+      `/api/admin/orders?section=history&orderId=${encodeURIComponent(archiveSearch.trim())}`
     );
-    setArchiveResult(data);
+    setArchiveResult(data?.[0] ?? null);
   }
 
   async function saveSettings() {
@@ -354,7 +485,11 @@ export default function AdminPage() {
     setArchiveResult((prev) => (prev?.id === orderId ? { ...prev, ...patch } : prev));
   }
 
-  function renderOrderCard(order: Order, showActions = false, embedded = false) {
+  function renderOrderCard(
+    order: Order,
+    options: { showActions?: boolean; embedded?: boolean; tab?: "new" | "approved" | "archive" } = {}
+  ) {
+    const { showActions = false, embedded = false, tab = null } = options;
     const customer = order.profiles as {
       full_name?: string;
       email?: string;
@@ -372,6 +507,9 @@ export default function AdminPage() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-4">
           <div>
             <p className="font-mono font-bold text-brand-700">{order.id}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand-600 mt-1">
+              {order.order_type === "custom" ? t("customOrder") : t("premadeDesign")}
+            </p>
             <p className="text-sm text-gray-500">
               {customer?.full_name ?? t("customer")} · {customer?.email}
             </p>
@@ -408,7 +546,7 @@ export default function AdminPage() {
             {(order.receipt_url ||
               order.account_holder_name ||
               order.payment_iban ||
-              isCustomPaid(order)) && (
+              isCustomPaymentAwaitingReview(order)) && (
               <AdminPaymentVerification
                 order={order}
                 defaultIban={settings?.iban ?? null}
@@ -470,56 +608,31 @@ export default function AdminPage() {
             )}
           </div>
 
-          {showActions ? (
-            isCustomPaid(order) ? (
-              <div className="flex flex-col items-end gap-2">
-                {receiptAccessUrl && (
-                  <a
-                    href={receiptAccessUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-brand-600 hover:underline"
-                  >
-                    {t("viewReceipt")}
-                  </a>
-                )}
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => acceptPayment(order.id)}
-                    loading={paymentAction?.orderId === order.id && paymentAction.type === "accept"}
-                  >
-                    {t("acceptPayment")}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    onClick={() => rejectPayment(order.id)}
-                    loading={paymentAction?.orderId === order.id && paymentAction.type === "reject"}
-                  >
-                    {t("rejectPayment")}
-                  </Button>
-                </div>
-              </div>
-            ) : orderNeedsApproval(order) ? (
-              <span className="text-sm font-medium text-amber-700">
-                {tOrders("statuses.pending_approval")}
-              </span>
-            ) : (
-              <span className="text-sm text-gray-500">{tOrders(`statuses.${order.status}`)}</span>
-            )
+          {tab === "approved" ? (
+            <div className="flex flex-col items-end gap-2">
+              <select
+                value={order.status}
+                onChange={(e) => void handleApprovedStatusUpdate(order.id, e.target.value as OrderStatus)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              >
+                <option value={order.status}>{tOrders(`statuses.${order.status}`)}</option>
+                {getApprovedTabNextStatuses(order.status).map((s) => (
+                  <option key={s} value={s}>
+                    {tOrders(`statuses.${s}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : tab === "archive" ? (
+            <span className="text-sm font-medium text-green-700">
+              {tOrders("statuses.delivered")}
+            </span>
+          ) : showActions ? (
+            <span className="text-sm font-medium text-amber-700">
+              {tOrders(`statuses.${order.status}`)}
+            </span>
           ) : (
-            <select
-              value={order.status}
-              onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
-              className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              {[order.status, ...getNextStatuses(order.status)].map((s) => (
-                <option key={s} value={s}>
-                  {tOrders(`statuses.${s}`)}
-                </option>
-              ))}
-            </select>
+            <span className="text-sm text-gray-500">{tOrders(`statuses.${order.status}`)}</span>
           )}
         </div>
 
@@ -579,11 +692,14 @@ export default function AdminPage() {
                     {orderNeedsApproval(order) && (
                       <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50/60 px-4 py-3 -mx-4 -mt-4 rounded-t-2xl">
                         <span className="text-xs font-semibold uppercase tracking-wide text-amber-800 mr-auto">
-                          {tOrders("statuses.pending_approval")}
+                          {order.order_type === "custom"
+                            ? t("customOrder")
+                            : t("premadeDesign")}{" "}
+                          · {tOrders("statuses.pending_approval")}
                         </span>
                         <Button
                           size="sm"
-                          onClick={() => void handleApproveOrder(order.id)}
+                          onClick={() => void handleApproveOrder(order)}
                           loading={approvingOrderId === order.id}
                         >
                           {approvingOrderId === order.id ? t("approving") : t("approveOrder")}
@@ -598,7 +714,39 @@ export default function AdminPage() {
                         </Button>
                       </div>
                     )}
-                    {renderOrderCard(order, true, true)}
+                    {isCustomPaymentAwaitingReview(order) && (
+                      <div className="mb-4 flex flex-wrap items-center gap-2 border-b border-sky-100 bg-sky-50/60 px-4 py-3 -mx-4 -mt-4 rounded-t-2xl">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-sky-800 mr-auto">
+                          {t("customOrder")} · {t("paymentReceiptSubmitted")}
+                        </span>
+                        {paymentReceiptAccessUrl(order.receipt_url) && (
+                          <a
+                            href={paymentReceiptAccessUrl(order.receipt_url)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-brand-600 hover:underline"
+                          >
+                            {t("viewReceipt")}
+                          </a>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={() => void acceptPayment(order.id)}
+                          loading={paymentAction?.orderId === order.id && paymentAction.type === "accept"}
+                        >
+                          {t("acceptPayment")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => void rejectPayment(order.id)}
+                          loading={paymentAction?.orderId === order.id && paymentAction.type === "reject"}
+                        >
+                          {t("rejectPayment")}
+                        </Button>
+                      </div>
+                    )}
+                    {renderOrderCard(order, { showActions: true, embedded: true, tab: "new" })}
                   </div>
                 ))}
               </div>
@@ -611,7 +759,9 @@ export default function AdminPage() {
               <p className="text-gray-500 py-12 text-center card-soft">{t("noApprovedOrders")}</p>
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {approvedOrders.map((order) => renderOrderCard(order))}
+                {approvedOrders.map((order) =>
+                  renderOrderCard(order, { tab: "approved" })
+                )}
               </div>
             )}
           </div>
@@ -696,38 +846,48 @@ export default function AdminPage() {
             )}
           </div>
         ) : activeTab === "archive" ? (
-          <div className="card">
-            <h2 className="font-semibold text-gray-900 mb-4">{t("searchByOrderId")}</h2>
-            <div className="flex flex-col sm:flex-row gap-2 mb-6">
-              <input
-                value={archiveSearch}
-                onChange={(e) => setArchiveSearch(e.target.value)}
-                placeholder="SM-20250630-1001"
-                className="input-field font-mono flex-1"
-              />
-              <Button onClick={searchArchive}>{t("search")}</Button>
-            </div>
-            {archiveResult && (
-              <div className="card-soft">
-                <p className="font-mono font-bold text-brand-700 mb-2">{archiveResult.id}</p>
-                <p className="text-sm text-gray-500 mb-2">
-                  Status: {tOrders(`statuses.${archiveResult.status}`)}
-                </p>
-                {(() => {
-                  const customer = archiveResult.profiles as {
-                    full_name?: string;
-                    email?: string;
-                    phone?: string;
-                    address?: UserAddress | null;
-                  } | null;
-                  const customerAddress = formatAdminOrderAddress(customer?.address);
-                  return customerAddress ? (
-                    <p className="text-sm text-gray-500 mb-2">{customerAddress}</p>
-                  ) : null;
-                })()}
-                <OrderTable orders={[archiveResult]} />
+          <div className="space-y-6">
+            <h2 className="font-semibold text-gray-900 text-lg">{t("archiveSearch")}</h2>
+            {archiveOrders.length === 0 ? (
+              <p className="text-gray-500 py-12 text-center card-soft">{t("noArchivedOrders")}</p>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {archiveOrders.map((order) => renderOrderCard(order, { tab: "archive" }))}
               </div>
             )}
+            <div className="card mt-8">
+              <h3 className="font-semibold text-gray-900 mb-4">{t("searchByOrderId")}</h3>
+              <div className="flex flex-col sm:flex-row gap-2 mb-6">
+                <input
+                  value={archiveSearch}
+                  onChange={(e) => setArchiveSearch(e.target.value)}
+                  placeholder="SM-20250630-1001"
+                  className="input-field font-mono flex-1"
+                />
+                <Button onClick={searchArchive}>{t("search")}</Button>
+              </div>
+              {archiveResult && (
+                <div className="card-soft">
+                  <p className="font-mono font-bold text-brand-700 mb-2">{archiveResult.id}</p>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Status: {tOrders(`statuses.${archiveResult.status}`)}
+                  </p>
+                  {(() => {
+                    const customer = archiveResult.profiles as {
+                      full_name?: string;
+                      email?: string;
+                      phone?: string;
+                      address?: UserAddress | null;
+                    } | null;
+                    const customerAddress = formatAdminOrderAddress(customer?.address);
+                    return customerAddress ? (
+                      <p className="text-sm text-gray-500 mb-2">{customerAddress}</p>
+                    ) : null;
+                  })()}
+                  <OrderTable orders={[archiveResult]} />
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
       </MotionSection>
@@ -773,6 +933,63 @@ export default function AdminPage() {
                 {t("saveShipping")}
               </Button>
               <Button variant="secondary" onClick={() => setShippingModal(null)}>
+                {t("cancelEdit")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {approveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card w-full max-w-md">
+            <h3 className="font-semibold text-gray-900 mb-1">{t("approveCustomOrder")}</h3>
+            <p className="text-sm text-gray-500 font-mono mb-4">{approveModal.id}</p>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("quotedPrice")} (EUR)
+                </label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={approveForm.price}
+                  onChange={(e) => setApproveForm({ ...approveForm, price: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {t("adminNotes")}
+                </label>
+                <textarea
+                  value={approveForm.adminNotes}
+                  onChange={(e) =>
+                    setApproveForm({ ...approveForm, adminNotes: e.target.value })
+                  }
+                  rows={3}
+                  placeholder={t("adminNotesPlaceholder")}
+                  className="w-full px-4 py-2 border border-gray-200 rounded-lg"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                fullWidth
+                loading={approvingOrderId === approveModal.id}
+                onClick={() => void submitCustomApprove(approveModal)}
+              >
+                {approvingOrderId === approveModal.id ? t("approving") : t("approveOrder")}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setApproveModal(null);
+                  setApproveForm({ price: "", adminNotes: "" });
+                }}
+              >
                 {t("cancelEdit")}
               </Button>
             </div>

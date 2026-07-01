@@ -13,6 +13,7 @@ export const ORDER_STATUSES = [
   "pending",
   "pending_approval",
   "pending_payment",
+  "in_progress",
   "paid",
   "approved",
   "waiting_for_payment",
@@ -29,6 +30,7 @@ export const DB_ORDER_STATUSES = [
   "pending",
   "pending_approval",
   "pending_payment",
+  "in_progress",
   "paid",
   "confirmed",
   "processing",
@@ -50,6 +52,7 @@ export const APP_TO_DB_ORDER_STATUS: Record<OrderStatus, DbOrderStatus> = {
   pending: "pending",
   pending_approval: "pending_approval",
   pending_payment: "pending_payment",
+  in_progress: "in_progress",
   paid: "paid",
   approved: "approved",
   waiting_for_payment: "pending_payment",
@@ -66,6 +69,7 @@ const DB_TO_APP_ORDER_STATUS: Record<string, OrderStatus> = {
   pending: "pending",
   pending_approval: "pending_approval",
   pending_payment: "pending_payment",
+  in_progress: "in_progress",
   paid: "paid",
   confirmed: "approved",
   approved: "approved",
@@ -179,18 +183,19 @@ export const RETURN_STATUSES = [
 ] as const satisfies readonly ReturnStatus[];
 
 const APPROVED_PIPELINE: OrderStatus[] = ["approved", "processing", "shipping"];
-const CUSTOM_PROCESSING_PIPELINE: OrderStatus[] = ["paid", "processing", "shipping"];
+const CUSTOM_PROCESSING_PIPELINE: OrderStatus[] = ["pending_payment", "in_progress"];
 
 /** Valid next statuses from each order status (reject uses delete flow) */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["approved"],
-  pending_approval: ["pending_payment"],
-  pending_payment: [],
-  paid: ["processing", "pending_payment"],
+  pending_approval: ["pending_payment", "in_progress"],
+  pending_payment: ["in_progress"],
+  in_progress: ["delivered"],
+  paid: ["in_progress", "pending_payment"],
   approved: ["processing"],
-  waiting_for_payment: [],
-  payment_submitted: ["processing", "pending_payment"],
-  processing: ["shipping"],
+  waiting_for_payment: ["in_progress"],
+  payment_submitted: ["in_progress", "pending_payment"],
+  processing: ["in_progress", "delivered"],
   shipping: ["delivered"],
   delivered: [],
   refunded: [],
@@ -289,10 +294,29 @@ export function validateOrderStatusUpdate(
   }
 
   if (
+    orderType === "standard" &&
+    (current === "pending_approval" || current === "pending") &&
+    next === "in_progress"
+  ) {
+    return { ok: true };
+  }
+
+  if (
     orderType === "custom" &&
     current === "pending_approval" &&
     next === "pending_payment"
   ) {
+    return { ok: true };
+  }
+
+  if (
+    (current === "pending_payment" || current === "waiting_for_payment") &&
+    next === "in_progress"
+  ) {
+    return { ok: true };
+  }
+
+  if (current === "in_progress" && next === "delivered") {
     return { ok: true };
   }
 

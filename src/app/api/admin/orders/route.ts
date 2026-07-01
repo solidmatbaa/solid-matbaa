@@ -3,20 +3,24 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { fetchAdminSectionCounts } from "@/lib/order-service";
-import {
-  expandStatusesForQuery,
-  normalizeOrderStatus,
-  sectionFilters,
-  type AdminOrderSection,
-} from "@/lib/order-transitions";
+import { normalizeOrderStatus, sectionFilters, type AdminOrderSection } from "@/lib/order-transitions";
 import type { ApiResponse } from "@/types";
 import { attachLineItemsToOrders, normalizeAdminOrder } from "@/lib/order-items";
-import { isCustomAwaitingApproval, isCustomPaid } from "@/lib/orders";
+import {
+  belongsInAdminApprovedOrders,
+  belongsInAdminNewOrders,
+  isCustomAwaitingApproval,
+} from "@/lib/orders";
 
 /** Nested embed + customer profile; order_items also batch-loaded as fallback. */
 const ORDER_SELECT = "*, order_items(*), profiles(full_name, email, phone, address)";
 
+/** Admin dashboard order tabs — strict status filters. */
+const ADMIN_ORDER_TABS = ["new", "approved", "archive"] as const;
+type AdminOrderTab = (typeof ADMIN_ORDER_TABS)[number];
+
 const VALID_SECTIONS = new Set<string>([
+  ...ADMIN_ORDER_TABS,
   "newCustom",
   "approvedCustom",
   "newStandard",
@@ -24,8 +28,6 @@ const VALID_SECTIONS = new Set<string>([
   "history",
   "returns",
   "approvedReturns",
-  "new",
-  "approved",
   "all",
 ]);
 
@@ -52,13 +54,6 @@ async function requireAdmin() {
   return { profile: profile!, supabase };
 }
 
-function mapLegacySection(section: string): AdminOrderSection | "history" | "allPending" | "allApproved" {
-  if (section === "new") return "allPending";
-  if (section === "approved") return "allApproved";
-  if (section === "all") return "allPending";
-  return section as AdminOrderSection;
-}
-
 function normalizeOrderRow<T extends { status?: string }>(order: T): T {
   if (!order.status) return order;
   return { ...order, status: normalizeOrderStatus(order.status) };
@@ -73,6 +68,93 @@ async function buildOrdersPayload(
   );
   const withItems = await attachLineItemsToOrders(admin, normalized);
   return withItems.map((order) => normalizeAdminOrder(order));
+}
+
+function isAdminOrderTab(section: string): section is AdminOrderTab {
+  return (ADMIN_ORDER_TABS as readonly string[]).includes(section);
+}
+
+async function fetchOrdersForAdminTab(
+  admin: ReturnType<typeof createAdminClient>,
+  tenantId: string,
+  tab: AdminOrderTab
+) {
+  if (tab === "new") {
+    const [approvalRes, paymentReviewRes] = await Promise.all([
+      admin
+        .from("orders")
+        .select(ORDER_SELECT)
+        .eq("tenant_id", tenantId)
+        .eq("is_archived", false)
+        .eq("status", "pending_approval")
+        .order("created_at", { ascending: false }),
+      admin
+        .from("orders")
+        .select(ORDER_SELECT)
+        .eq("tenant_id", tenantId)
+        .eq("is_archived", false)
+        .eq("order_type", "custom")
+        .eq("status", "pending_payment")
+        .not("receipt_url", "is", null)
+        .order("created_at", { ascending: false }),
+    ]);
+
+    if (approvalRes.error) {
+      return { error: approvalRes.error.message, data: null as null };
+    }
+    if (paymentReviewRes.error) {
+      return { error: paymentReviewRes.error.message, data: null as null };
+    }
+
+    const merged = [...(approvalRes.data ?? []), ...(paymentReviewRes.data ?? [])].sort(
+      (a, b) =>
+        new Date(String(b.created_at)).getTime() - new Date(String(a.created_at)).getTime()
+    );
+
+    const orders = merged.filter((order) =>
+      belongsInAdminNewOrders({
+        order_type: String(order.order_type),
+        status: normalizeOrderStatus(String(order.status)),
+        receipt_url: order.receipt_url as string | null | undefined,
+      })
+    );
+
+    return { error: null, data: await buildOrdersPayload(admin, orders) };
+  }
+
+  let query = admin
+    .from("orders")
+    .select(ORDER_SELECT)
+    .eq("tenant_id", tenantId)
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false });
+
+  if (tab === "approved") {
+    query = query.eq("status", "in_progress");
+  } else {
+    query = query.eq("status", "delivered");
+  }
+
+  const { data: ordersRaw, error } = await query;
+
+  if (error) {
+    console.error(`[admin/orders] ${tab} query failed:`, error.message);
+    return { error: error.message, data: null as null };
+  }
+
+  let orders = ordersRaw ?? [];
+
+  orders = orders.filter((order) => {
+    const normalized = {
+      order_type: String(order.order_type),
+      status: normalizeOrderStatus(String(order.status)),
+      receipt_url: order.receipt_url as string | null | undefined,
+    };
+    if (tab === "approved") return belongsInAdminApprovedOrders(normalized);
+    return normalizeOrderStatus(String(order.status)) === "delivered";
+  });
+
+  return { error: null, data: await buildOrdersPayload(admin, orders) };
 }
 
 export async function GET(request: Request) {
@@ -96,7 +178,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data: counts });
     }
 
-    const sectionParam = searchParams.get("section") ?? "newStandard";
+    const sectionParam = searchParams.get("section") ?? "new";
     if (!VALID_SECTIONS.has(sectionParam)) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Invalid section" },
@@ -104,64 +186,21 @@ export async function GET(request: Request) {
       );
     }
 
-    const section = mapLegacySection(sectionParam);
     const admin = createAdminClient();
 
-    if (section === "allPending" || section === "allApproved") {
-      const orderStatuses =
-        section === "allPending"
-          ? (["pending", "pending_approval"] as const)
-          : (["approved", "paid", "processing", "shipping"] as const);
-
-      const { data: ordersRaw, error } = await admin
-        .from("orders")
-        .select(ORDER_SELECT)
-        .eq("tenant_id", tenantId)
-        .eq("is_archived", false)
-        .in("status", expandStatusesForQuery([...orderStatuses]))
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("[admin/orders] orders query failed:", error.message);
+    if (isAdminOrderTab(sectionParam)) {
+      const result = await fetchOrdersForAdminTab(admin, tenantId, sectionParam);
+      if (result.error) {
         return NextResponse.json<ApiResponse<null>>(
-          { success: false, error: error.message },
+          { success: false, error: result.error },
           { status: 500 }
         );
       }
-
-      let orders = ordersRaw ?? [];
-      if (section === "allPending") {
-        orders = orders.filter((order) => {
-          const status = normalizeOrderStatus(String(order.status));
-          const type = String(order.order_type);
-          return (
-            (type === "custom" &&
-              (isCustomAwaitingApproval({ order_type: type, status }) ||
-                status === "pending")) ||
-            (type === "standard" && status === "pending")
-          );
-        });
-      } else {
-        orders = orders.filter((order) => {
-          const status = normalizeOrderStatus(String(order.status));
-          const type = String(order.order_type);
-          if (type === "standard") {
-            return ["approved", "processing", "shipping"].includes(status);
-          }
-          if (type === "custom") {
-            return isCustomPaid({ order_type: type, status }) || ["processing", "shipping"].includes(status);
-          }
-          return false;
-        });
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: await buildOrdersPayload(admin, orders),
-      });
+      return NextResponse.json({ success: true, data: result.data });
     }
 
-    const filters = sectionFilters(section as AdminOrderSection);
+    const section = sectionParam as AdminOrderSection;
+    const filters = sectionFilters(section);
 
     if (filters.kind === "returns" || section === "returns" || section === "approvedReturns") {
       let query = admin
@@ -197,12 +236,12 @@ export async function GET(request: Request) {
           .select(ORDER_SELECT)
           .eq("tenant_id", tenantId)
           .eq("id", orderId)
-          .eq("is_archived", true)
+          .eq("status", "delivered")
           .maybeSingle();
 
         if (error || !order) {
           return NextResponse.json<ApiResponse<null>>(
-            { success: false, error: "Order not found in history" },
+            { success: false, error: "Order not found in archive" },
             { status: 404 }
           );
         }
@@ -227,7 +266,11 @@ export async function GET(request: Request) {
       query = query.eq("is_archived", filters.archived);
     }
     if (filters.orderStatuses) {
-      query = query.in("status", expandStatusesForQuery(filters.orderStatuses));
+      if (filters.orderStatuses.length === 1) {
+        query = query.eq("status", filters.orderStatuses[0]!);
+      } else {
+        query = query.in("status", filters.orderStatuses);
+      }
     }
 
     const { data: orders, error } = await query;

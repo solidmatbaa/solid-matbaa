@@ -22,6 +22,7 @@ const statusColors: Record<OrderStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   pending_approval: "bg-amber-100 text-amber-800",
   pending_payment: "bg-sky-100 text-sky-800",
+  in_progress: "bg-indigo-100 text-indigo-800",
   paid: "bg-orange-100 text-orange-800",
   approved: "bg-blue-100 text-blue-800",
   waiting_for_payment: "bg-sky-100 text-sky-800",

@@ -5,6 +5,7 @@ export const DB_ORDER_STATUS_CHECK_VALUES = [
   "pending",
   "pending_approval",
   "pending_payment",
+  "in_progress",
   "paid",
   "approved",
   "waiting_for_payment",
@@ -14,12 +15,13 @@ export const DB_ORDER_STATUS_CHECK_VALUES = [
   "delivered",
   "refunded",
   "rejected",
+  "cancelled",
 ] as const;
 
 export type DbOrderStatusCheckValue = (typeof DB_ORDER_STATUS_CHECK_VALUES)[number];
 
-/** Initial status for standard checkout orders (payment receipt attached). */
-export const INITIAL_STANDARD_ORDER_STATUS = "pending" satisfies DbOrderStatusCheckValue;
+/** Initial status for standard (pre-made design) checkout orders — admin must approve first. */
+export const INITIAL_STANDARD_ORDER_STATUS = "pending_approval" satisfies DbOrderStatusCheckValue;
 
 /** Initial status for custom quote requests (admin must approve before payment). */
 export const INITIAL_CUSTOM_ORDER_STATUS = "pending_approval" satisfies DbOrderStatusCheckValue;

@@ -8,6 +8,7 @@ export type OrderStatus =
   | "pending"
   | "pending_approval"
   | "pending_payment"
+  | "in_progress"
   | "paid"
   | "approved"
   | "waiting_for_payment"
