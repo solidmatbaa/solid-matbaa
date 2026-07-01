@@ -6,10 +6,6 @@ import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import { validateCustomQuantity, CUSTOM_QUANTITY_MIN, CUSTOM_QUANTITY_STEP } from "@/lib/custom-order";
 import { parseJsonText } from "@/lib/utils";
-import {
-  removeCustomDesignPdfClient,
-  uploadCustomDesignPdfClient,
-} from "@/lib/upload-order-design-client";
 import { Button } from "@/components/ui/Button";
 
 export function CustomPrintingForm() {
@@ -64,22 +60,15 @@ export function CustomPrintingForm() {
       return;
     }
 
-    const upload = await uploadCustomDesignPdfClient(file);
-    if (!upload.ok) {
-      setError(upload.error || t("submitError"));
-      setLoading(false);
-      return;
-    }
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("quantity", String(qty));
+    formData.append("designSize", designSize.trim());
 
     try {
       const res = await fetch("/api/custom-printing", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          designFileUrl: upload.designFileUrl,
-          quantity: qty,
-          designSize: designSize.trim(),
-        }),
+        body: formData,
       });
       const raw = await res.text();
       const parsed = parseJsonText<{ success?: boolean; error?: string; data?: { orderId?: string } }>(
@@ -88,7 +77,6 @@ export function CustomPrintingForm() {
       );
 
       if (!parsed.ok) {
-        await removeCustomDesignPdfClient(upload.path);
         setError(parsed.error ?? t("submitError"));
         setLoading(false);
         return;
@@ -97,7 +85,6 @@ export function CustomPrintingForm() {
       const data = parsed.data;
 
       if (!res.ok || !data.success) {
-        await removeCustomDesignPdfClient(upload.path);
         if (res.status === 401) {
           setError(t("loginRequired"));
         } else if (res.status === 403) {
@@ -116,7 +103,6 @@ export function CustomPrintingForm() {
       if (fileRef.current) fileRef.current.value = "";
       router.refresh();
     } catch {
-      await removeCustomDesignPdfClient(upload.path);
       setError(t("submitError"));
     }
 
