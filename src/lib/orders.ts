@@ -221,14 +221,12 @@ export const RETURN_STATUS_FLOW: ReturnStatus[] = [
   "refunded",
 ];
 
-/** Sequential next status for the admin Approved Orders fulfillment dropdown. */
-export function getApprovedTabNextStatuses(current: OrderStatus | string): OrderStatus[] {
-  const normalized = normalizeOrderStatus(String(current));
-  if (normalized === "in_progress") return ["processing"];
-  if (normalized === "processing") return ["shipping"];
-  if (normalized === "shipping") return ["delivered"];
-  return [];
-}
+/** Status options shown in the admin Approved Orders dropdown. */
+export const APPROVED_TAB_STATUS_OPTIONS: OrderStatus[] = [
+  "processing",
+  "shipping",
+  "delivered",
+];
 
 export function getNextStatuses(current: OrderStatus | string): OrderStatus[] {
   const normalized = normalizeOrderStatus(String(current));

@@ -16,13 +16,12 @@ import {
 import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import { apiFetch, formatCurrency, getLocalizedText } from "@/lib/utils";
 import {
-  getApprovedTabNextStatuses,
+  APPROVED_TAB_STATUS_OPTIONS,
   isCustomAwaitingApproval,
   isCustomPaymentAwaitingReview,
   isStandardAwaitingApproval,
 } from "@/lib/orders";
-import { getOrderTracking, normalizeShippingInput, shippingUpdatePayload } from "@/lib/shipping";
-import { toDbOrderStatus } from "@/lib/order-transitions";
+import { getOrderTracking } from "@/lib/shipping";
 import { formatAdminOrderAddress } from "@/lib/address-data";
 import { getOrderDesignFileUrl } from "@/lib/order-files";
 import { getSiteIban } from "@/lib/payment-details";
@@ -317,42 +316,6 @@ export default function AdminPage() {
   }
 
   async function handleApprovedStatusUpdate(orderId: string, nextStatus: OrderStatus) {
-    setActionError("");
-    setPaymentAction({ orderId, type: "accept" });
-
-    const supabase = createSupabaseClient();
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        status: toDbOrderStatus(nextStatus),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", orderId);
-
-    setPaymentAction(null);
-
-    if (error) {
-      console.error("[admin] approved status update failed:", error);
-      setActionError(error.message);
-      return;
-    }
-
-    if (nextStatus === "delivered") {
-      setApprovedOrders((prev) => prev.filter((o) => o.id !== orderId));
-    } else {
-      setApprovedOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
-      );
-    }
-
-    router.refresh();
-    await loadData({ silent: true });
-  }
-
-  function handleApprovedStatusSelect(
-    orderId: string,
-    nextStatus: OrderStatus
-  ) {
     if (nextStatus === "shipping") {
       setShippingModal(orderId);
       setShippingForm({
@@ -362,56 +325,7 @@ export default function AdminPage() {
       });
       return;
     }
-    void handleApprovedStatusUpdate(orderId, nextStatus);
-  }
-
-  async function submitApprovedShipping(orderId: string) {
-    const shippingInfo = normalizeShippingInput(shippingForm);
-    if (!shippingInfo) {
-      setActionError(t("shippingDetailsRequired"));
-      return;
-    }
-
-    setActionError("");
-    setPaymentAction({ orderId, type: "accept" });
-
-    const supabase = createSupabaseClient();
-    const { error } = await supabase
-      .from("orders")
-      .update({
-        status: toDbOrderStatus("shipping"),
-        ...shippingUpdatePayload(shippingInfo),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", orderId);
-
-    setPaymentAction(null);
-
-    if (error) {
-      console.error("[admin] shipping update failed:", error);
-      setActionError(error.message);
-      return;
-    }
-
-    setShippingModal(null);
-    setShippingForm({
-      tracking_number: "",
-      shipping_carrier: "",
-      shipping_url: "",
-    });
-    setApprovedOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? {
-              ...o,
-              status: "shipping",
-              ...shippingUpdatePayload(shippingInfo),
-            }
-          : o
-      )
-    );
-    router.refresh();
-    await loadData({ silent: true });
+    await updateOrderStatus(orderId, nextStatus);
   }
 
   async function updateOrderStatus(
@@ -451,6 +365,8 @@ export default function AdminPage() {
         if (moved) {
           setApprovedOrders((prev) => [{ ...moved, status }, ...prev.filter((o) => o.id !== orderId)]);
         }
+      } else if (status === "delivered") {
+        setApprovedOrders((prev) => prev.filter((o) => o.id !== orderId));
       } else {
         setApprovedOrders((prev) =>
           prev.map((o) => {
@@ -697,14 +613,19 @@ export default function AdminPage() {
           {tab === "approved" ? (
             <div className="flex flex-col items-end gap-2">
               <select
-                value={order.status}
-                onChange={(e) =>
-                  handleApprovedStatusSelect(order.id, e.target.value as OrderStatus)
-                }
+                defaultValue=""
+                onChange={(e) => {
+                  const nextStatus = e.target.value as OrderStatus;
+                  if (!nextStatus) return;
+                  void handleApprovedStatusUpdate(order.id, nextStatus);
+                  e.target.value = "";
+                }}
                 className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
-                <option value={order.status}>{tOrders(`statuses.${order.status}`)}</option>
-                {getApprovedTabNextStatuses(order.status).map((s) => (
+                <option value="" disabled>
+                  {tOrders(`statuses.${order.status}`)}
+                </option>
+                {APPROVED_TAB_STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>
                     {tOrders(`statuses.${s}`)}
                   </option>
@@ -1008,7 +929,10 @@ export default function AdminPage() {
             </div>
             <div className="flex gap-3">
               <Button
-                onClick={() => void submitApprovedShipping(shippingModal)}
+                onClick={() => {
+                  if (!shippingModal) return;
+                  void updateOrderStatus(shippingModal, "shipping", shippingForm);
+                }}
                 disabled={
                   !shippingForm.tracking_number ||
                   !shippingForm.shipping_carrier ||
