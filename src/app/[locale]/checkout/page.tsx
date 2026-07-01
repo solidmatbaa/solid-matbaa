@@ -15,7 +15,7 @@ import {
   userAddressToAddressForm,
   type AddressFormValues,
 } from "@/lib/address-data";
-import { apiFetch, formatCurrency, getLocalizedText, resolveProductImageUrl } from "@/lib/utils";
+import { apiFetch, fetchJson, formatCurrency, getLocalizedText, resolveProductImageUrl } from "@/lib/utils";
 import { stripPaymentIbanFromPayload } from "@/lib/payment-details";
 import { BankAccountHolderDisplay } from "@/components/checkout/BankAccountHolderDisplay";
 import type { Locale, Profile, Settings } from "@/types";
@@ -73,17 +73,20 @@ export default function CheckoutPage() {
       JSON.stringify(stripPaymentIbanFromPayload(addressFormToUserAddress(addressForm)))
     );
 
-    const res = await fetch("/api/checkout", { method: "POST", body: formData });
-    const data = await res.json();
+    const { data, error: requestError, ok } = await fetchJson<{
+      success: boolean;
+      data?: { orderId: string };
+      error?: string;
+    }>("/api/checkout", { method: "POST", body: formData });
 
     setLoading(false);
 
-    if (!res.ok || !data.success) {
-      setError(data.error ?? t("orderError"));
+    if (!ok || !data?.success) {
+      setError(data?.error ?? requestError ?? t("orderError"));
       return;
     }
 
-    setOrderId(data.data.orderId);
+    setOrderId(data.data?.orderId ?? "");
     clearCart();
   }
 

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,9 +12,10 @@ import {
 } from "@/lib/address-data";
 import { isPaymentReceiptMimeType } from "@/lib/payment-receipts-storage";
 import { uploadPaymentReceipt } from "@/lib/storage";
-import { BANK_ACCOUNT_HOLDER_NAME, stripPaymentIbanFromPayload } from "@/lib/payment-details";
+import { buildStandardOrderInsert, stripPaymentIbanFromPayload } from "@/lib/payment-details";
+import { jsonApiError, jsonApiResponse } from "@/lib/api-response";
 import { resolveProductImageUrl, PRODUCT_IMAGE_PLACEHOLDER } from "@/lib/utils";
-import type { ApiResponse, CartItem, UserAddress } from "@/types";
+import type { CartItem, UserAddress } from "@/types";
 
 const localizedNameSchema = z
   .object({
@@ -22,7 +23,7 @@ const localizedNameSchema = z
     ar: z.string().optional(),
     tr: z.string().optional(),
   })
-  .passthrough();
+  .strip();
 
 const cartItemSchema = z.object({
   productId: z.string().uuid(),
@@ -48,17 +49,14 @@ const userAddressSchema = z
     province: z.string().optional(),
     neighborhood: z.string().optional(),
   })
-  .passthrough();
+  .strip();
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
-      );
+      return jsonApiResponse({ success: false, error: "Unauthorized" }, 401);
     }
 
     const { data: profile } = await supabase
@@ -68,28 +66,26 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!profile?.tenant_id) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Profile not configured" },
-        { status: 400 }
-      );
+      return jsonApiResponse({ success: false, error: "Profile not configured" }, 400);
     }
 
     if (!profile.email_verified) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Please verify your email first" },
-        { status: 403 }
-      );
+      return jsonApiResponse({ success: false, error: "Please verify your email first" }, 403);
     }
 
     const formData = await request.formData();
+    // payment_iban is display-only on the client; ignore if sent as a form field.
+    formData.delete("payment_iban");
+    formData.delete("paymentIban");
+
     const receipt = formData.get("receipt") as File | null;
     const itemsRaw = formData.get("items") as string | null;
     const addressRaw = formData.get("address") as string | null;
 
     if (!receipt || !itemsRaw || !addressRaw) {
-      return NextResponse.json<ApiResponse<null>>(
+      return jsonApiResponse(
         { success: false, error: "Receipt, cart items, and shipping address are required" },
-        { status: 400 }
+        400
       );
     }
 
@@ -97,18 +93,20 @@ export async function POST(request: NextRequest) {
     try {
       itemsParsed = JSON.parse(itemsRaw);
     } catch {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Invalid cart items" },
-        { status: 400 }
+      return jsonApiResponse({ success: false, error: "Invalid cart items" }, 400);
+    }
+
+    if (Array.isArray(itemsParsed)) {
+      itemsParsed = itemsParsed.map((item) =>
+        typeof item === "object" && item !== null
+          ? stripPaymentIbanFromPayload(item as Record<string, unknown>)
+          : item
       );
     }
 
     const parsed = z.array(cartItemSchema).min(1).safeParse(itemsParsed);
     if (!parsed.success) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Invalid cart items" },
-        { status: 400 }
-      );
+      return jsonApiResponse({ success: false, error: "Invalid cart items" }, 400);
     }
 
     const items = parsed.data as CartItem[];
@@ -117,34 +115,29 @@ export async function POST(request: NextRequest) {
     let addressParsed: UserAddress;
     try {
       const addressJson = JSON.parse(addressRaw);
-      const addressResult = userAddressSchema.safeParse(addressJson);
+      const sanitizedAddress =
+        typeof addressJson === "object" && addressJson !== null
+          ? stripPaymentIbanFromPayload(addressJson as Record<string, unknown>)
+          : addressJson;
+      const addressResult = userAddressSchema.safeParse(sanitizedAddress);
       if (!addressResult.success) {
-        return NextResponse.json<ApiResponse<null>>(
-          { success: false, error: "Invalid shipping address" },
-          { status: 400 }
-        );
+        return jsonApiResponse({ success: false, error: "Invalid shipping address" }, 400);
       }
-      addressParsed = stripPaymentIbanFromPayload(addressResult.data) as UserAddress;
+      addressParsed = addressResult.data as UserAddress;
     } catch {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Invalid shipping address" },
-        { status: 400 }
-      );
+      return jsonApiResponse({ success: false, error: "Invalid shipping address" }, 400);
     }
 
     const addressError = validateUserAddress(addressParsed);
     if (addressError) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: addressError },
-        { status: 400 }
-      );
+      return jsonApiResponse({ success: false, error: addressError }, 400);
     }
 
     const receiptContentType = receipt.type || "application/octet-stream";
     if (!isPaymentReceiptMimeType(receiptContentType)) {
-      return NextResponse.json<ApiResponse<null>>(
+      return jsonApiResponse(
         { success: false, error: "Invalid file type. Use JPG, PNG, or PDF." },
-        { status: 400 }
+        400
       );
     }
 
@@ -165,10 +158,7 @@ export async function POST(request: NextRequest) {
     });
 
     if ("error" in receiptUpload) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: receiptUpload.error },
-        { status: 500 }
-      );
+      return jsonApiResponse({ success: false, error: receiptUpload.error }, 500);
     }
 
     const shippingAddress = mapUserAddressToShippingAddress(
@@ -182,24 +172,19 @@ export async function POST(request: NextRequest) {
       .update({ address: addressParsed })
       .eq("id", user.id);
 
-    const { error: orderError } = await admin.from("orders").insert({
-      id: orderId,
-      tenant_id: profile.tenant_id,
-      user_id: user.id,
-      status: "pending",
-      order_type: "standard",
-      is_archived: false,
-      shipping_address: shippingAddress,
-      total_amount: total,
-      receipt_url: receiptUpload.url,
-      account_holder_name: BANK_ACCOUNT_HOLDER_NAME,
+    const orderInsert = buildStandardOrderInsert({
+      orderId,
+      tenantId: profile.tenant_id,
+      userId: user.id,
+      shippingAddress,
+      total,
+      receiptUrl: receiptUpload.url,
     });
 
+    const { error: orderError } = await admin.from("orders").insert(orderInsert);
+
     if (orderError) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: orderError.message },
-        { status: 500 }
-      );
+      return jsonApiResponse({ success: false, error: orderError.message }, 500);
     }
 
     const orderItems = await buildCheckoutOrderItemRows(
@@ -217,9 +202,9 @@ export async function POST(request: NextRequest) {
     });
 
     if (itemsError) {
-      return NextResponse.json<ApiResponse<null>>(
+      return jsonApiResponse(
         { success: false, error: `Failed to save order items: ${itemsError}` },
-        { status: 500 }
+        500
       );
     }
 
@@ -243,15 +228,10 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json<ApiResponse<{ orderId: string }>>({
-      success: true,
-      data: { orderId },
-    });
+    return jsonApiResponse({ success: true, data: { orderId } });
   } catch (err) {
     console.error("Checkout error:", err);
-    return NextResponse.json<ApiResponse<null>>(
-      { success: false, error: "Internal server error" },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : "Internal server error";
+    return jsonApiError(message, 500);
   }
 }
