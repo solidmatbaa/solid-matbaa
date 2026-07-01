@@ -43,7 +43,7 @@ export function Header() {
             className="flex items-center gap-3 transition-transform hover:scale-[1.02] duration-200"
           >
             <Image
-              src="/BEST%20LOGO%20.jpg"
+              src="/سيبسي.png"
               alt="Solid Matbaa"
               width={1024}
               height={413}
