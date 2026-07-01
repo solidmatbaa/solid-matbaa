@@ -1,6 +1,18 @@
 import { normalizeOrderStatus } from "@/lib/order-transitions";
 import type { Order, OrderStatus, OrderTab, Return, ReturnStatus } from "@/types";
 
+/** Custom quote awaiting admin price approval (pending before migration 019, or pending_approval after). */
+export function isCustomAwaitingApproval(order: {
+  order_type: string;
+  status: string;
+  total_amount: number;
+}): boolean {
+  if (order.order_type !== "custom") return false;
+  const status = normalizeOrderStatus(order.status);
+  if (status === "pending_approval") return true;
+  return status === "pending" && order.total_amount === 0;
+}
+
 const ACTIVE_STATUSES: OrderStatus[] = [
   "pending",
   "pending_approval",

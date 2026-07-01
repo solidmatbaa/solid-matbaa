@@ -1,6 +1,5 @@
 import type { OrderStatus, OrderType, ReturnStatus, ShippingInfo } from "@/types";
 
-/** Admin dashboard sections */
 export type AdminOrderSection =
   | "newCustom"
   | "waitingPaymentCustom"
@@ -213,7 +212,7 @@ export function sectionFilters(section: AdminOrderSection): {
       return {
         kind: "orders",
         orderType: "custom",
-        orderStatuses: ["pending_approval"],
+        orderStatuses: ["pending", "pending_approval"],
         archived: false,
       };
     case "waitingPaymentCustom":
@@ -264,7 +263,8 @@ export function sectionFilters(section: AdminOrderSection): {
 export function validateOrderStatusUpdate(
   current: OrderStatus,
   next: OrderStatus,
-  shippingInfo?: ShippingInfo
+  shippingInfo?: ShippingInfo,
+  orderType?: OrderType
 ): { ok: true } | { ok: false; error: string } {
   if (current === next) {
     return { ok: false, error: "Order is already in this status" };
@@ -274,6 +274,14 @@ export function validateOrderStatusUpdate(
     if (current !== "pending" && current !== "pending_approval") {
       return { ok: false, error: "Only pending orders can be rejected" };
     }
+    return { ok: true };
+  }
+
+  if (
+    orderType === "custom" &&
+    (current === "pending" || current === "pending_approval") &&
+    next === "waiting_for_payment"
+  ) {
     return { ok: true };
   }
 

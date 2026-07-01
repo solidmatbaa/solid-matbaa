@@ -15,7 +15,7 @@ import {
   type AdminPaymentDetailsPayload,
 } from "@/components/admin/AdminPaymentVerification";
 import { apiFetch, formatCurrency, getLocalizedText } from "@/lib/utils";
-import { getNextStatuses } from "@/lib/orders";
+import { getNextStatuses, isCustomAwaitingApproval } from "@/lib/orders";
 import { getOrderTracking } from "@/lib/shipping";
 import { formatAdminOrderAddress } from "@/lib/address-data";
 import { getOrderDesignFileUrl } from "@/lib/order-files";
@@ -391,7 +391,7 @@ export default function AdminPage() {
   }
 
   function isAwaitingQuoteApproval(order: Order) {
-    return order.status === "pending_approval" || order.status === "pending";
+    return isCustomAwaitingApproval(order);
   }
 
   async function savePaymentDetails(orderId: string, payload: AdminPaymentDetailsPayload) {

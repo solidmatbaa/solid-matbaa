@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateCustomQuantity } from "@/lib/custom-order";
 import { uploadOrderDesignPdf } from "@/lib/storage";
+import { buildCustomOrderInsert } from "@/lib/order-insert";
 import type { ApiResponse } from "@/types";
 
 export async function POST(request: NextRequest) {
@@ -85,17 +86,15 @@ export async function POST(request: NextRequest) {
 
     const orderIdStr = orderId as string ?? `SM-${Date.now()}`;
 
-    const { error: orderError } = await admin.from("orders").insert({
-      id: orderIdStr,
-      tenant_id: profile.tenant_id,
-      user_id: user.id,
-      status: "pending_approval",
-      order_type: "custom",
-      total_amount: 0,
+    const orderInsert = buildCustomOrderInsert({
+      orderId: orderIdStr,
+      tenantId: profile.tenant_id,
+      userId: user.id,
       notes: `Custom print quote — Qty: ${qty}, Size: ${designSize}`,
-      design_file_url: upload.url,
-      file_url: upload.url,
+      designFileUrl: upload.url,
     });
+
+    const { error: orderError } = await admin.from("orders").insert(orderInsert);
 
     if (orderError) {
       await admin.storage.from("order-designs").remove([upload.path]);

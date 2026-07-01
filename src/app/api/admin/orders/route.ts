@@ -11,6 +11,7 @@ import {
 } from "@/lib/order-transitions";
 import type { ApiResponse } from "@/types";
 import { attachLineItemsToOrders, normalizeAdminOrder } from "@/lib/order-items";
+import { isCustomAwaitingApproval } from "@/lib/orders";
 
 /** Nested embed + customer profile; order_items also batch-loaded as fallback. */
 const ORDER_SELECT = "*, order_items(*), profiles(full_name, email, phone, address)";
@@ -145,7 +146,11 @@ export async function GET(request: Request) {
           const status = normalizeOrderStatus(String(order.status));
           const type = String(order.order_type);
           return (
-            (type === "custom" && status === "pending_approval") ||
+            (type === "custom" && isCustomAwaitingApproval({
+              order_type: type,
+              status,
+              total_amount: Number(order.total_amount ?? 0),
+            })) ||
             (type === "standard" && status === "pending")
           );
         });
@@ -236,9 +241,20 @@ export async function GET(request: Request) {
       );
     }
 
+    let orderRows = orders ?? [];
+    if (section === "newCustom") {
+      orderRows = orderRows.filter((order) =>
+        isCustomAwaitingApproval({
+          order_type: String(order.order_type),
+          status: normalizeOrderStatus(String(order.status)),
+          total_amount: Number(order.total_amount ?? 0),
+        })
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      data: await buildOrdersPayload(admin, orders),
+      data: await buildOrdersPayload(admin, orderRows),
     });
   } catch (err) {
     console.error("[admin/orders] unhandled error:", err);

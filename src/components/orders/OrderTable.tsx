@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import type { Order, OrderStatus, Locale, Return } from "@/types";
 import { formatCurrency, formatDate, getLocalizedText, cn } from "@/lib/utils";
 import { getOrderTracking } from "@/lib/shipping";
-import { getPendingReturnForOrder, orderHasActiveReturn } from "@/lib/orders";
+import { getPendingReturnForOrder, orderHasActiveReturn, isCustomAwaitingApproval } from "@/lib/orders";
 import { canPayCustomOrder } from "@/lib/order-files";
 
 interface OrderTableProps {
@@ -95,7 +95,7 @@ export function OrderTable({
                       {t("refundRequested")}
                     </p>
                   )}
-                  {showCustomPayment && order.status === "pending_approval" && (
+                  {showCustomPayment && isCustomAwaitingApproval(order) && (
                     <p className="mt-1 text-xs text-amber-700">{t("awaitingQuoteApproval")}</p>
                   )}
                   {showCustomPayment && order.status === "waiting_for_payment" && (

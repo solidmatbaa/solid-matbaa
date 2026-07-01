@@ -124,7 +124,13 @@ export async function transitionOrderStatus(
   }
 
   const current = normalizeOrderStatus(String(order.status));
-  const validation = validateOrderStatusUpdate(current, nextStatus, options?.shippingInfo);
+  const orderType = String(order.order_type) as OrderType;
+  const validation = validateOrderStatusUpdate(
+    current,
+    nextStatus,
+    options?.shippingInfo,
+    orderType
+  );
 
   if (!validation.ok) {
     return validation;
@@ -436,8 +442,25 @@ export async function fetchAdminSectionCounts(
 
   const pipeline = expandStatusesForQuery(["approved", "processing", "shipping"]);
 
+  const countCustomAwaitingApproval = async () => {
+    const pendingApproval = await countOrders(
+      "custom",
+      expandStatusesForQuery(["pending_approval"]),
+      false
+    );
+    const { count: pendingQuotes } = await admin
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenantId)
+      .eq("order_type", "custom")
+      .eq("is_archived", false)
+      .eq("status", "pending")
+      .eq("total_amount", 0);
+    return pendingApproval + (pendingQuotes ?? 0);
+  };
+
   return {
-    newCustom: await countOrders("custom", expandStatusesForQuery(["pending_approval"]), false),
+    newCustom: await countCustomAwaitingApproval(),
     waitingPaymentCustom:
       (await countOrders("custom", expandStatusesForQuery(["waiting_for_payment"]), false)) +
       (await countOrders("custom", expandStatusesForQuery(["payment_submitted"]), false)),
