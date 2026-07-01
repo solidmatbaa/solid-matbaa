@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { transitionOrderStatus } from "@/lib/order-service";
 import {
   extractOrderStatusString,
+  normalizeOrderStatus,
   ORDER_STATUSES,
   parseOrderStatusInput,
 } from "@/lib/order-transitions";
@@ -196,7 +197,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, data: orders ?? [] });
+    const normalizedOrders = (orders ?? []).map((order) => ({
+      ...order,
+      status: normalizeOrderStatus(order.status),
+    }));
+
+    return NextResponse.json({ success: true, data: normalizedOrders });
   } catch {
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: "Internal server error" },

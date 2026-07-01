@@ -76,17 +76,29 @@ export function isCustomPendingPayment(order: {
   );
 }
 
-const ACTIVE_STATUSES: OrderStatus[] = [
-  "pending",
+/** Statuses the client should always be able to track in My Orders (app-facing names). */
+export const CLIENT_TRACKING_STATUSES: OrderStatus[] = [
   "pending_approval",
+  "in_progress",
   "pending_payment",
-  "paid",
-  "approved",
-  "waiting_for_payment",
-  "payment_submitted",
   "processing",
   "shipping",
+  "delivered",
 ];
+
+/** Hidden from client lists — cancelled/rejected orders only. */
+export function isClientOrderCancelled(order: { status: string }): boolean {
+  const status = normalizeOrderStatus(order.status);
+  return status === "rejected" || String(order.status).trim() === "cancelled";
+}
+
+/** Active Custom / Pre-made tabs — any non-archived, non-cancelled order still in progress. */
+export function isClientActiveTabOrder(order: Pick<Order, "status" | "is_archived">): boolean {
+  if (order.is_archived) return false;
+  if (isClientOrderCancelled(order)) return false;
+  const status = normalizeOrderStatus(order.status);
+  return status !== "delivered" && status !== "refunded";
+}
 
 const TERMINAL_RETURN_STATUSES: ReturnStatus[] = ["rejected", "refunded"];
 
@@ -131,29 +143,23 @@ export function filterOrdersByTab(
   switch (tab) {
     case "custom":
       return orders.filter(
-        (o) =>
-          o.order_type === "custom" &&
-          !o.is_archived &&
-          ACTIVE_STATUSES.includes(o.status)
+        (o) => o.order_type === "custom" && isClientActiveTabOrder(o)
       );
     case "active":
       return orders.filter(
-        (o) =>
-          o.order_type === "standard" &&
-          !o.is_archived &&
-          ACTIVE_STATUSES.includes(o.status)
+        (o) => o.order_type === "standard" && isClientActiveTabOrder(o)
       );
     case "history":
       return orders.filter((o) => {
-        if (o.status === "refunded") return false;
+        if (isClientOrderCancelled(o)) return false;
+
+        const status = normalizeOrderStatus(o.status);
+        if (status === "refunded") return false;
 
         const openReturn = getOpenReturn(o.id, returns);
         if (openReturn && openReturn.status !== "pending") return false;
 
-        return (
-          o.status === "delivered" ||
-          (o.is_archived && o.status !== "rejected")
-        );
+        return status === "delivered" || (o.is_archived && status !== "rejected");
       });
     default:
       return [];
@@ -170,9 +176,7 @@ export function filterReturnsByTab(
 }
 
 export function getActiveOrders(orders: Order[]): Order[] {
-  return orders.filter(
-    (o) => !o.is_archived && ACTIVE_STATUSES.includes(o.status)
-  );
+  return orders.filter((o) => isClientActiveTabOrder(o));
 }
 
 export function getPendingReturns(returns: Return[]): Return[] {
