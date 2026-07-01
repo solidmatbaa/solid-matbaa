@@ -27,8 +27,9 @@ export function canPayCustomOrder(order: {
   receipt_url: string | null;
 }): boolean {
   if (order.order_type !== "custom") return false;
+  if (order.receipt_url) return false;
   if (isCustomPendingPayment(order)) return true;
   const status = normalizeOrderStatus(order.status);
-  if (status === "approved" && order.total_amount > 0 && !order.receipt_url) return true;
+  if (status === "approved" && order.total_amount > 0) return true;
   return false;
 }

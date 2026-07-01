@@ -262,7 +262,7 @@
       "pending_approval": "في انتظار الموافقة",
       "pending_payment": "في انتظار الدفع",
       "in_progress": "قيد التنفيذ",
-      "paid": "مدفوع",
+      "paid": "تم الدفع وبانتظار الموافقة",
       "approved": "معتمد",
       "waiting_for_payment": "في انتظار الدفع",
       "payment_submitted": "تم إرسال الدفع",
@@ -276,6 +276,7 @@
     "iban": "رقم IBAN",
     "awaitingQuoteApproval": "يتم مراجعة عرض السعر. سنبلغك عند جاهزية الدفع.",
     "paymentReady": "تم اعتماد العرض — حوّل المبلغ عبر IBAN أدناه ثم ارفع إيصال الدفع.",
+    "paidAwaitingApproval": "تم الدفع وبانتظار الموافقة",
     "returnStatuses": {
       "pending": "تم طلب الاسترداد",
       "approved": "تمت الموافقة على الاسترداد",

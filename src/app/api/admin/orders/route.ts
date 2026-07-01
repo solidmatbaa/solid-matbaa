@@ -100,7 +100,7 @@ async function fetchOrdersForAdminTab(
         .eq("tenant_id", tenantId)
         .eq("is_archived", false)
         .eq("order_type", "custom")
-        .eq("status", "pending_payment")
+        .in("status", ["paid", "payment_submitted"])
         .not("receipt_url", "is", null)
         .order("created_at", { ascending: false }),
     ]);

@@ -262,7 +262,7 @@
       "pending_approval": "Onay Bekliyor",
       "pending_payment": "Ödeme Bekleniyor",
       "in_progress": "Devam Ediyor",
-      "paid": "Ödendi",
+      "paid": "Ödendi — onay bekleniyor",
       "approved": "Onaylandı",
       "waiting_for_payment": "Ödeme Bekleniyor",
       "payment_submitted": "Ödeme Gönderildi",
@@ -276,6 +276,7 @@
     "iban": "IBAN",
     "awaitingQuoteApproval": "Teklifiniz inceleniyor. Ödeme hazır olduğunda bilgilendirileceksiniz.",
     "paymentReady": "Teklif onaylandı — aşağıdaki IBAN ile ödeme yapın ve makbuzunuzu yükleyin.",
+    "paidAwaitingApproval": "Ödendi — onay bekleniyor",
     "returnStatuses": {
       "pending": "İade Talep Edildi",
       "approved": "İade Onaylandı",

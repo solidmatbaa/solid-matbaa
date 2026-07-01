@@ -454,13 +454,13 @@ export async function fetchAdminSectionCounts(
     waitingPaymentCustom: await countOrders("custom", ["pending_payment"], false),
     approvedCustom: await countOrders(
       "custom",
-      ["in_progress", "processing", "shipped"],
+      ["in_progress", "shipped", "processing"],
       false
     ),
     newStandard: await countOrders("standard", ["pending_approval"], false),
     approvedStandard: await countOrders(
       "standard",
-      ["in_progress", "processing", "shipped"],
+      ["in_progress", "shipped", "processing"],
       false
     ),
     returns: await countReturns(["pending"], false),
@@ -520,7 +520,7 @@ export async function submitCustomOrderPayment(
     return { ok: false, error: "Failed to upload payment receipt", status: 500 };
   }
 
-  const paymentDbStatus = toDbOrderStatus("pending_payment");
+  const paymentDbStatus = toDbOrderStatus("paid");
 
   const { error: updateError } = await admin
     .from("orders")

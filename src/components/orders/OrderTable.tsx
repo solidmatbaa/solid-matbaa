@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import type { Order, OrderStatus, Locale, Return } from "@/types";
 import { formatCurrency, formatDate, getLocalizedText, cn } from "@/lib/utils";
 import { getOrderTracking } from "@/lib/shipping";
-import { getPendingReturnForOrder, orderHasActiveReturn, isCustomAwaitingApproval, isCustomPendingPayment, isClientOrderRejected } from "@/lib/orders";
+import { getPendingReturnForOrder, orderHasActiveReturn, isCustomAwaitingApproval, isCustomPendingPayment, isCustomPaidAwaitingApproval, isClientOrderRejected } from "@/lib/orders";
 import { canPayCustomOrder } from "@/lib/order-files";
 
 interface OrderTableProps {
@@ -106,6 +106,11 @@ export function OrderTable({
                   )}
                   {showCustomPayment && isCustomPendingPayment(order) && (
                     <p className="mt-1 text-xs text-sky-700">{t("paymentReady")}</p>
+                  )}
+                  {showCustomPayment && isCustomPaidAwaitingApproval(order) && (
+                    <p className="mt-1 text-xs font-medium text-orange-700">
+                      {t("paidAwaitingApproval")}
+                    </p>
                   )}
                   {isClientOrderRejected(order) && order.rejection_reason && (
                     <p className="mt-1 text-xs text-red-700">

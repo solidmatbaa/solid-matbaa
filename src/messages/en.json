@@ -263,7 +263,7 @@
       "pending_approval": "Awaiting Approval",
       "pending_payment": "Pending Payment",
       "in_progress": "In Progress",
-      "paid": "Paid",
+      "paid": "Paid and Awaiting Approval",
       "approved": "Approved",
       "waiting_for_payment": "Waiting for Payment",
       "payment_submitted": "Payment Submitted",
@@ -277,6 +277,7 @@
     "iban": "IBAN",
     "awaitingQuoteApproval": "Your quote is being reviewed. We will notify you when payment is ready.",
     "paymentReady": "Quote approved — transfer payment using the IBAN below, then upload your receipt.",
+    "paidAwaitingApproval": "Paid and awaiting approval",
     "trackShipment": "Track shipment",
     "returnStatuses": {
       "pending": "Refund Requested",

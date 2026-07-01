@@ -182,16 +182,16 @@ export const RETURN_STATUSES = [
   "refunded",
 ] as const satisfies readonly ReturnStatus[];
 
-const FULFILLMENT_PIPELINE: OrderStatus[] = ["in_progress", "processing", "shipping"];
+const FULFILLMENT_PIPELINE: OrderStatus[] = ["in_progress", "shipping", "processing"];
 
 /** Valid next statuses from each order status (reject uses delete flow) */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["approved"],
   pending_approval: ["pending_payment", "in_progress"],
   pending_payment: ["in_progress"],
-  in_progress: ["processing"],
+  in_progress: ["shipping"],
   paid: ["in_progress", "pending_payment"],
-  approved: ["processing"],
+  approved: ["shipping"],
   waiting_for_payment: ["in_progress"],
   payment_submitted: ["in_progress", "pending_payment"],
   processing: ["shipping"],
@@ -309,13 +309,19 @@ export function validateOrderStatusUpdate(
   }
 
   if (
-    (current === "pending_payment" || current === "waiting_for_payment") &&
+    (current === "pending_payment" ||
+      current === "waiting_for_payment" ||
+      current === "paid" ||
+      current === "payment_submitted") &&
     next === "in_progress"
   ) {
     return { ok: true };
   }
 
-  if (current === "in_progress" && next === "processing") {
+  if (current === "in_progress" && next === "shipping") {
+    if (!shippingInfo) {
+      return { ok: false, error: "Shipping info is required when marking as shipped" };
+    }
     return { ok: true };
   }
 
@@ -334,10 +340,6 @@ export function validateOrderStatusUpdate(
     (current === "paid" || current === "payment_submitted") &&
     next === "pending_payment"
   ) {
-    return { ok: true };
-  }
-
-  if ((current === "paid" || current === "payment_submitted") && next === "processing") {
     return { ok: true };
   }
 

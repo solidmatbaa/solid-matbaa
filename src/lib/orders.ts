@@ -24,8 +24,18 @@ export function isCustomPaymentAwaitingReview(order: {
   receipt_url?: string | null;
 }): boolean {
   if (order.order_type !== "custom") return false;
+  if (!order.receipt_url) return false;
   const status = normalizeOrderStatus(order.status);
-  return status === "pending_payment" && !!order.receipt_url;
+  return status === "paid" || status === "payment_submitted";
+}
+
+/** Custom order paid — receipt submitted, awaiting admin approval (client view). */
+export function isCustomPaidAwaitingApproval(order: {
+  order_type: string;
+  status: string;
+  receipt_url?: string | null;
+}): boolean {
+  return isCustomPaymentAwaitingReview(order);
 }
 
 /** Pre-made design order awaiting admin approval. */
@@ -53,8 +63,8 @@ export function belongsInAdminNewOrders(order: {
 /** Active fulfillment statuses shown in the admin Approved Orders tab. */
 export const FULFILLMENT_PIPELINE_STATUSES: OrderStatus[] = [
   "in_progress",
-  "processing",
   "shipping",
+  "processing",
 ];
 
 /** Orders shown in the admin Approved Orders tab (both pre-made and custom after payment). */
@@ -62,13 +72,15 @@ export function belongsInAdminApprovedOrders(order: { status: string }): boolean
   return FULFILLMENT_PIPELINE_STATUSES.includes(normalizeOrderStatus(order.status));
 }
 
-/** Custom order awaiting customer bank transfer. */
+/** Custom order awaiting customer bank transfer (no receipt uploaded yet). */
 export function isCustomPendingPayment(order: {
   order_type: string;
   status: string;
   total_amount: number;
+  receipt_url?: string | null;
 }): boolean {
   if (order.order_type !== "custom") return false;
+  if (order.receipt_url) return false;
   const status = normalizeOrderStatus(order.status);
   return (
     (status === "pending_payment" || status === "waiting_for_payment") &&
@@ -81,7 +93,7 @@ export const CLIENT_TRACKING_STATUSES: OrderStatus[] = [
   "pending_approval",
   "in_progress",
   "pending_payment",
-  "processing",
+  "paid",
   "shipping",
   "delivered",
 ];
@@ -208,7 +220,6 @@ export const ORDER_STATUS_FLOW: OrderStatus[] = [
   "pending_payment",
   "paid",
   "approved",
-  "processing",
   "shipping",
   "delivered",
 ];
@@ -222,15 +233,11 @@ export const RETURN_STATUS_FLOW: ReturnStatus[] = [
 ];
 
 /** Status options shown in the admin Approved Orders dropdown. */
-export const APPROVED_TAB_STATUS_OPTIONS: OrderStatus[] = [
-  "processing",
-  "shipping",
-  "delivered",
-];
+export const APPROVED_TAB_STATUS_OPTIONS: OrderStatus[] = ["shipping", "delivered"];
 
 export function getNextStatuses(current: OrderStatus | string): OrderStatus[] {
   const normalized = normalizeOrderStatus(String(current));
-  if (normalized === "paid" || normalized === "payment_submitted") return ["processing"];
+  if (normalized === "paid" || normalized === "payment_submitted") return [];
   if (normalized === "pending_payment" || normalized === "waiting_for_payment") return [];
   const idx = ORDER_STATUS_FLOW.indexOf(normalized);
   if (idx === -1) return [];
