@@ -1,15 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { validateCustomQuantity } from "@/lib/custom-order";
-import { uploadOrderDesignPdf } from "@/lib/storage";
+import { ORDER_DESIGNS_BUCKET } from "@/lib/order-files";
 import { buildCustomOrderInsert } from "@/lib/order-insert";
+import { resolveStorageObjectPath } from "@/lib/storage-access";
 import type { ApiResponse } from "@/types";
+
+const customPrintingBodySchema = z.object({
+  designFileUrl: z.string().min(1),
+  quantity: z.coerce.number().int(),
+  designSize: z.string().trim().min(1),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json<ApiResponse<null>>(
@@ -38,27 +48,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    const quantity = formData.get("quantity") as string | null;
-    const designSize = (formData.get("designSize") as string | null)?.trim();
-
-    if (!file || !quantity || !designSize) {
+    const body = await request.json().catch(() => null);
+    const parsed = customPrintingBodySchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "PDF file, design size, and quantity are required" },
+        { success: false, error: parsed.error.errors[0]?.message ?? "Invalid request body" },
         { status: 400 }
       );
     }
 
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Only PDF files are accepted" },
-        { status: 400 }
-      );
-    }
-
-    const qty = parseInt(quantity, 10);
-    const qtyValidation = validateCustomQuantity(qty);
+    const { designFileUrl, designSize } = parsed.data;
+    const qtyValidation = validateCustomQuantity(parsed.data.quantity);
     if (!qtyValidation.ok) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: qtyValidation.error },
@@ -66,38 +66,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const upload = await uploadOrderDesignPdf({
-      tenantId: profile.tenant_id,
-      userId: user.id,
-      fileName: file.name,
-      buffer,
-    });
+    const qty = parsed.data.quantity;
+    const objectPath = resolveStorageObjectPath(ORDER_DESIGNS_BUCKET, designFileUrl);
+    const expectedPrefix = `${profile.tenant_id}/${user.id}/`;
 
-    if ("error" in upload) {
+    if (!objectPath?.startsWith(expectedPrefix)) {
       return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: "Failed to upload design file. Please try again." },
-        { status: 500 }
+        { success: false, error: "Invalid design file URL" },
+        { status: 400 }
       );
     }
 
     const admin = createAdminClient();
     const { data: orderId } = await admin.rpc("generate_order_id");
 
-    const orderIdStr = orderId as string ?? `SM-${Date.now()}`;
+    const orderIdStr = (orderId as string) ?? `SM-${Date.now()}`;
 
     const orderInsert = buildCustomOrderInsert({
       orderId: orderIdStr,
       tenantId: profile.tenant_id,
       userId: user.id,
       notes: `Custom print quote — Qty: ${qty}, Size: ${designSize}`,
-      designFileUrl: upload.url,
+      designFileUrl: objectPath,
     });
 
     const { error: orderError } = await admin.from("orders").insert(orderInsert);
 
     if (orderError) {
-      await admin.storage.from("order-designs").remove([upload.path]);
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: orderError.message },
         { status: 500 }
@@ -119,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     if (itemError) {
       await admin.from("orders").delete().eq("id", orderIdStr);
-      await admin.storage.from("order-designs").remove([upload.path]);
+      await admin.storage.from(ORDER_DESIGNS_BUCKET).remove([objectPath]);
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: itemError.message },
         { status: 500 }
