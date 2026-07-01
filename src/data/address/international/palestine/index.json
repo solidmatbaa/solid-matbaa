@@ -1,0 +1,13 @@
+{
+  "country": "Palestine",
+  "provinces": [
+    {
+      "name": "Gaza Strip",
+      "slug": "gaza-strip"
+    },
+    {
+      "name": "West Bank",
+      "slug": "west-bank"
+    }
+  ]
+}

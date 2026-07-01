@@ -1,0 +1,43 @@
+{
+  "name": "solid-matbaa",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:address-data": "node scripts/build-international-addresses.mjs",
+    "setup:payment-receipts-storage": "node scripts/setup-payment-receipts-storage.mjs",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.110.0",
+    "clsx": "^2.1.1",
+    "country-state-city": "^3.2.1",
+    "framer-motion": "^12.42.2",
+    "next": "^16.2.9",
+    "next-intl": "^4.13.1",
+    "nodemailer": "^7.0.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "resend": "^4.5.1",
+    "tailwind-merge": "^3.3.0",
+    "turkey-neighbourhoods": "^4.0.3",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.42"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.8",
+    "@types/node": "^22.15.29",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^9.28.0",
+    "eslint-config-next": "^15.3.3",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.8.3"
+  }
+}

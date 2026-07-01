@@ -1,0 +1,85 @@
+{
+  "country": "Sweden",
+  "provinces": [
+    {
+      "name": "Blekinge",
+      "slug": "blekinge"
+    },
+    {
+      "name": "Dalarna County",
+      "slug": "dalarna-county"
+    },
+    {
+      "name": "Gävleborg County",
+      "slug": "gavleborg-county"
+    },
+    {
+      "name": "Gotland County",
+      "slug": "gotland-county"
+    },
+    {
+      "name": "Halland County",
+      "slug": "halland-county"
+    },
+    {
+      "name": "Jönköping County",
+      "slug": "jonkoping-county"
+    },
+    {
+      "name": "Kalmar County",
+      "slug": "kalmar-county"
+    },
+    {
+      "name": "Kronoberg County",
+      "slug": "kronoberg-county"
+    },
+    {
+      "name": "Norrbotten County",
+      "slug": "norrbotten-county"
+    },
+    {
+      "name": "Örebro County",
+      "slug": "orebro-county"
+    },
+    {
+      "name": "Östergötland County",
+      "slug": "ostergotland-county"
+    },
+    {
+      "name": "Skåne County",
+      "slug": "skane-county"
+    },
+    {
+      "name": "Södermanland County",
+      "slug": "sodermanland-county"
+    },
+    {
+      "name": "Stockholm County",
+      "slug": "stockholm-county"
+    },
+    {
+      "name": "Uppsala County",
+      "slug": "uppsala-county"
+    },
+    {
+      "name": "Värmland County",
+      "slug": "varmland-county"
+    },
+    {
+      "name": "Västerbotten County",
+      "slug": "vasterbotten-county"
+    },
+    {
+      "name": "Västernorrland County",
+      "slug": "vasternorrland-county"
+    },
+    {
+      "name": "Västmanland County",
+      "slug": "vastmanland-county"
+    },
+    {
+      "name": "Västra Götaland County",
+      "slug": "vastra-gotaland-county"
+    }
+  ]
+}

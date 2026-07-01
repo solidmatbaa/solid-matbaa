@@ -1,0 +1,25 @@
+{
+  "country": "Denmark",
+  "provinces": [
+    {
+      "name": "Capital Region of Denmark",
+      "slug": "capital-region-of-denmark"
+    },
+    {
+      "name": "Central Denmark Region",
+      "slug": "central-denmark-region"
+    },
+    {
+      "name": "North Denmark Region",
+      "slug": "north-denmark-region"
+    },
+    {
+      "name": "Region of Southern Denmark",
+      "slug": "region-of-southern-denmark"
+    },
+    {
+      "name": "Region Zealand",
+      "slug": "region-zealand"
+    }
+  ]
+}

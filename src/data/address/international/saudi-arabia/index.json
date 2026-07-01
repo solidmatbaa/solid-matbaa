@@ -1,0 +1,57 @@
+{
+  "country": "Saudi Arabia",
+  "provinces": [
+    {
+      "name": "'Asir",
+      "slug": "asir"
+    },
+    {
+      "name": "Al Bahah",
+      "slug": "al-bahah"
+    },
+    {
+      "name": "Al Jawf",
+      "slug": "al-jawf"
+    },
+    {
+      "name": "Al Madinah",
+      "slug": "al-madinah"
+    },
+    {
+      "name": "Al-Qassim",
+      "slug": "al-qassim"
+    },
+    {
+      "name": "Eastern Province",
+      "slug": "eastern-province"
+    },
+    {
+      "name": "Ha'il",
+      "slug": "ha-il"
+    },
+    {
+      "name": "Jizan",
+      "slug": "jizan"
+    },
+    {
+      "name": "Makkah",
+      "slug": "makkah"
+    },
+    {
+      "name": "Najran",
+      "slug": "najran"
+    },
+    {
+      "name": "Northern Borders",
+      "slug": "northern-borders"
+    },
+    {
+      "name": "Riyadh",
+      "slug": "riyadh"
+    },
+    {
+      "name": "Tabuk",
+      "slug": "tabuk"
+    }
+  ]
+}

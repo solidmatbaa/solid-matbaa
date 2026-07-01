@@ -1,0 +1,69 @@
+{
+  "country": "Germany",
+  "provinces": [
+    {
+      "name": "Baden-Württemberg",
+      "slug": "baden-wurttemberg"
+    },
+    {
+      "name": "Bavaria",
+      "slug": "bavaria"
+    },
+    {
+      "name": "Berlin",
+      "slug": "berlin"
+    },
+    {
+      "name": "Brandenburg",
+      "slug": "brandenburg"
+    },
+    {
+      "name": "Bremen",
+      "slug": "bremen"
+    },
+    {
+      "name": "Hamburg",
+      "slug": "hamburg"
+    },
+    {
+      "name": "Hesse",
+      "slug": "hesse"
+    },
+    {
+      "name": "Lower Saxony",
+      "slug": "lower-saxony"
+    },
+    {
+      "name": "Mecklenburg-Vorpommern",
+      "slug": "mecklenburg-vorpommern"
+    },
+    {
+      "name": "North Rhine-Westphalia",
+      "slug": "north-rhine-westphalia"
+    },
+    {
+      "name": "Rhineland-Palatinate",
+      "slug": "rhineland-palatinate"
+    },
+    {
+      "name": "Saarland",
+      "slug": "saarland"
+    },
+    {
+      "name": "Saxony",
+      "slug": "saxony"
+    },
+    {
+      "name": "Saxony-Anhalt",
+      "slug": "saxony-anhalt"
+    },
+    {
+      "name": "Schleswig-Holstein",
+      "slug": "schleswig-holstein"
+    },
+    {
+      "name": "Thuringia",
+      "slug": "thuringia"
+    }
+  ]
+}

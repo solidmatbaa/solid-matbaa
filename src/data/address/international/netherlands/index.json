@@ -1,0 +1,53 @@
+{
+  "country": "Netherlands",
+  "provinces": [
+    {
+      "name": "Drenthe",
+      "slug": "drenthe"
+    },
+    {
+      "name": "Flevoland",
+      "slug": "flevoland"
+    },
+    {
+      "name": "Friesland",
+      "slug": "friesland"
+    },
+    {
+      "name": "Gelderland",
+      "slug": "gelderland"
+    },
+    {
+      "name": "Groningen",
+      "slug": "groningen"
+    },
+    {
+      "name": "Limburg",
+      "slug": "limburg"
+    },
+    {
+      "name": "North Brabant",
+      "slug": "north-brabant"
+    },
+    {
+      "name": "North Holland",
+      "slug": "north-holland"
+    },
+    {
+      "name": "Overijssel",
+      "slug": "overijssel"
+    },
+    {
+      "name": "South Holland",
+      "slug": "south-holland"
+    },
+    {
+      "name": "Utrecht",
+      "slug": "utrecht"
+    },
+    {
+      "name": "Zeeland",
+      "slug": "zeeland"
+    }
+  ]
+}

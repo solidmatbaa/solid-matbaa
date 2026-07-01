@@ -1,0 +1,77 @@
+{
+  "country": "Iraq",
+  "provinces": [
+    {
+      "name": "Al Anbar Governorate",
+      "slug": "al-anbar-governorate"
+    },
+    {
+      "name": "Al Muthanna Governorate",
+      "slug": "al-muthanna-governorate"
+    },
+    {
+      "name": "Al-Qādisiyyah Governorate",
+      "slug": "al-qadisiyyah-governorate"
+    },
+    {
+      "name": "Babylon Governorate",
+      "slug": "babylon-governorate"
+    },
+    {
+      "name": "Baghdad Governorate",
+      "slug": "baghdad-governorate"
+    },
+    {
+      "name": "Basra Governorate",
+      "slug": "basra-governorate"
+    },
+    {
+      "name": "Dhi Qar Governorate",
+      "slug": "dhi-qar-governorate"
+    },
+    {
+      "name": "Diyala Governorate",
+      "slug": "diyala-governorate"
+    },
+    {
+      "name": "Dohuk Governorate",
+      "slug": "dohuk-governorate"
+    },
+    {
+      "name": "Erbil Governorate",
+      "slug": "erbil-governorate"
+    },
+    {
+      "name": "Karbala Governorate",
+      "slug": "karbala-governorate"
+    },
+    {
+      "name": "Kirkuk Governorate",
+      "slug": "kirkuk-governorate"
+    },
+    {
+      "name": "Maysan Governorate",
+      "slug": "maysan-governorate"
+    },
+    {
+      "name": "Najaf Governorate",
+      "slug": "najaf-governorate"
+    },
+    {
+      "name": "Nineveh Governorate",
+      "slug": "nineveh-governorate"
+    },
+    {
+      "name": "Saladin Governorate",
+      "slug": "saladin-governorate"
+    },
+    {
+      "name": "Sulaymaniyah Governorate",
+      "slug": "sulaymaniyah-governorate"
+    },
+    {
+      "name": "Wasit Governorate",
+      "slug": "wasit-governorate"
+    }
+  ]
+}

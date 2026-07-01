@@ -1,0 +1,197 @@
+{
+  "country": "Algeria",
+  "provinces": [
+    {
+      "name": "Adrar",
+      "slug": "adrar"
+    },
+    {
+      "name": "Aïn Defla",
+      "slug": "ain-defla"
+    },
+    {
+      "name": "Aïn Témouchent",
+      "slug": "ain-temouchent"
+    },
+    {
+      "name": "Algiers",
+      "slug": "algiers"
+    },
+    {
+      "name": "Annaba",
+      "slug": "annaba"
+    },
+    {
+      "name": "Batna",
+      "slug": "batna"
+    },
+    {
+      "name": "Béchar",
+      "slug": "bechar"
+    },
+    {
+      "name": "Béjaïa",
+      "slug": "bejaia"
+    },
+    {
+      "name": "Biskra",
+      "slug": "biskra"
+    },
+    {
+      "name": "Blida",
+      "slug": "blida"
+    },
+    {
+      "name": "Bordj Bou Arréridj",
+      "slug": "bordj-bou-arreridj"
+    },
+    {
+      "name": "Bouïra",
+      "slug": "bouira"
+    },
+    {
+      "name": "Boumerdès",
+      "slug": "boumerdes"
+    },
+    {
+      "name": "Chlef",
+      "slug": "chlef"
+    },
+    {
+      "name": "Constantine",
+      "slug": "constantine"
+    },
+    {
+      "name": "Djelfa",
+      "slug": "djelfa"
+    },
+    {
+      "name": "El Bayadh",
+      "slug": "el-bayadh"
+    },
+    {
+      "name": "El Oued",
+      "slug": "el-oued"
+    },
+    {
+      "name": "El Tarf",
+      "slug": "el-tarf"
+    },
+    {
+      "name": "Ghardaïa",
+      "slug": "ghardaia"
+    },
+    {
+      "name": "Guelma",
+      "slug": "guelma"
+    },
+    {
+      "name": "Illizi",
+      "slug": "illizi"
+    },
+    {
+      "name": "Jijel",
+      "slug": "jijel"
+    },
+    {
+      "name": "Khenchela",
+      "slug": "khenchela"
+    },
+    {
+      "name": "Laghouat",
+      "slug": "laghouat"
+    },
+    {
+      "name": "M'Sila",
+      "slug": "m-sila"
+    },
+    {
+      "name": "Mascara",
+      "slug": "mascara"
+    },
+    {
+      "name": "Médéa",
+      "slug": "medea"
+    },
+    {
+      "name": "Mila",
+      "slug": "mila"
+    },
+    {
+      "name": "Mostaganem",
+      "slug": "mostaganem"
+    },
+    {
+      "name": "Naama",
+      "slug": "naama"
+    },
+    {
+      "name": "Oran",
+      "slug": "oran"
+    },
+    {
+      "name": "Ouargla",
+      "slug": "ouargla"
+    },
+    {
+      "name": "Oum El Bouaghi",
+      "slug": "oum-el-bouaghi"
+    },
+    {
+      "name": "Relizane",
+      "slug": "relizane"
+    },
+    {
+      "name": "Saïda",
+      "slug": "saida"
+    },
+    {
+      "name": "Sétif",
+      "slug": "setif"
+    },
+    {
+      "name": "Sidi Bel Abbès",
+      "slug": "sidi-bel-abbes"
+    },
+    {
+      "name": "Skikda",
+      "slug": "skikda"
+    },
+    {
+      "name": "Souk Ahras",
+      "slug": "souk-ahras"
+    },
+    {
+      "name": "Tamanghasset",
+      "slug": "tamanghasset"
+    },
+    {
+      "name": "Tébessa",
+      "slug": "tebessa"
+    },
+    {
+      "name": "Tiaret",
+      "slug": "tiaret"
+    },
+    {
+      "name": "Tindouf",
+      "slug": "tindouf"
+    },
+    {
+      "name": "Tipasa",
+      "slug": "tipasa"
+    },
+    {
+      "name": "Tissemsilt",
+      "slug": "tissemsilt"
+    },
+    {
+      "name": "Tizi Ouzou",
+      "slug": "tizi-ouzou"
+    },
+    {
+      "name": "Tlemcen",
+      "slug": "tlemcen"
+    }
+  ]
+}

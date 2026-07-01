@@ -1,0 +1,9 @@
+{
+  "country": "Dubai (UAE)",
+  "provinces": [
+    {
+      "name": "Dubai",
+      "slug": "dubai"
+    }
+  ]
+}
