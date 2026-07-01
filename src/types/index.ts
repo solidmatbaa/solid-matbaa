@@ -131,6 +131,7 @@ export interface Order {
   shipping_carrier: string | null;
   shipping_url: string | null;
   rejection_reason: string | null;
+  hidden_from_client: boolean;
   created_at: string;
   updated_at: string;
   order_items?: OrderItem[];

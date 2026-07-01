@@ -138,7 +138,7 @@ async function fetchOrdersForAdminTab(
   if (tab === "approved") {
     query = query.in("status", expandStatusesForQuery(FULFILLMENT_PIPELINE_STATUSES));
   } else {
-    query = query.eq("status", "delivered");
+    return { error: null, data: [] };
   }
 
   const { data: ordersRaw, error } = await query;

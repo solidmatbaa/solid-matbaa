@@ -73,6 +73,24 @@ export default function OrdersPage() {
     setSubmitError(error ?? t("returnSubmitError"));
   }
 
+  async function handleDeleteOrder(orderId: string) {
+    if (!window.confirm(t("deleteOrderConfirm"))) return;
+
+    setSubmitError("");
+    const { ok, error } = await apiFetch(
+      `/api/orders?orderId=${encodeURIComponent(orderId)}`,
+      { method: "DELETE" }
+    );
+
+    if (!ok) {
+      setSubmitError(error ?? t("deleteOrderFailed"));
+      return;
+    }
+
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    router.refresh();
+  }
+
   const filteredOrders = filterOrdersByTab(orders, activeTab, returns);
   const filteredReturns = filterReturnsByTab(returns, activeTab);
 
@@ -98,6 +116,9 @@ export default function OrdersPage() {
             showCustomPayment={activeTab === "custom"}
             paymentIban={paymentIban}
             showReturnButton={activeTab === "history"}
+            onDeleteOrder={
+              activeTab === "custom" || activeTab === "active" ? handleDeleteOrder : undefined
+            }
             onRequestReturn={(id) => {
               setSubmitError("");
               setReturnModal(id);

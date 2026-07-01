@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import type { Order, OrderStatus, Locale, Return } from "@/types";
 import { formatCurrency, formatDate, getLocalizedText, cn } from "@/lib/utils";
 import { getOrderTracking } from "@/lib/shipping";
-import { getPendingReturnForOrder, orderHasActiveReturn, isCustomAwaitingApproval, isCustomPendingPayment } from "@/lib/orders";
+import { getPendingReturnForOrder, orderHasActiveReturn, isCustomAwaitingApproval, isCustomPendingPayment, isClientOrderRejected } from "@/lib/orders";
 import { canPayCustomOrder } from "@/lib/order-files";
 
 interface OrderTableProps {
@@ -16,6 +16,7 @@ interface OrderTableProps {
   showReturnButton?: boolean;
   showCustomPayment?: boolean;
   paymentIban?: string | null;
+  onDeleteOrder?: (orderId: string) => void;
 }
 
 const statusColors: Record<OrderStatus, string> = {
@@ -41,6 +42,7 @@ export function OrderTable({
   showReturnButton,
   showCustomPayment,
   paymentIban,
+  onDeleteOrder,
 }: OrderTableProps) {
   const t = useTranslations("orders");
   const locale = useLocale() as Locale;
@@ -68,6 +70,7 @@ export function OrderTable({
             <th className="text-start py-3 px-2 font-medium text-gray-500">{t("items")}</th>
             {showCustomPayment && <th className="py-3 px-2" />}
             {showReturnButton && <th className="py-3 px-2" />}
+            {onDeleteOrder && <th className="py-3 px-2" />}
           </tr>
         </thead>
         <tbody>
@@ -103,6 +106,11 @@ export function OrderTable({
                   )}
                   {showCustomPayment && isCustomPendingPayment(order) && (
                     <p className="mt-1 text-xs text-sky-700">{t("paymentReady")}</p>
+                  )}
+                  {isClientOrderRejected(order) && order.rejection_reason && (
+                    <p className="mt-1 text-xs text-red-700">
+                      {t("rejectionReason")}: {order.rejection_reason}
+                    </p>
                   )}
                 </td>
                 <td className="py-3 px-2 font-medium">{formatCurrency(order.total_amount, locale)}</td>
@@ -162,6 +170,20 @@ export function OrderTable({
                       <span className="text-xs text-gray-400 whitespace-nowrap">
                         {t("returnSubmitted")}
                       </span>
+                    ) : null}
+                  </td>
+                )}
+                {onDeleteOrder && (
+                  <td className="py-3 px-2">
+                    {isClientOrderRejected(order) ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => onDeleteOrder(order.id)}
+                        className="text-xs text-red-600 hover:text-red-800 hover:bg-red-50 px-0"
+                      >
+                        {t("deleteOrder")}
+                      </Button>
                     ) : null}
                   </td>
                 )}

@@ -188,6 +188,7 @@ export async function GET(request: NextRequest) {
       .from("orders")
       .select("*, order_items(*)")
       .eq("user_id", user.id)
+      .eq("hidden_from_client", false)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -203,6 +204,74 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ success: true, data: normalizedOrders });
+  } catch {
+    return NextResponse.json<ApiResponse<null>>(
+      { success: false, error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const orderId = request.nextUrl.searchParams.get("orderId")?.trim();
+    if (!orderId) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "Order ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { data: order, error: fetchError } = await supabase
+      .from("orders")
+      .select("id, status, user_id")
+      .eq("id", orderId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (fetchError || !order) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "Order not found" },
+        { status: 404 }
+      );
+    }
+
+    if (normalizeOrderStatus(order.status) !== "rejected") {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: "Only rejected orders can be removed from your list" },
+        { status: 400 }
+      );
+    }
+
+    const admin = createAdminClient();
+    const { error: updateError } = await admin
+      .from("orders")
+      .update({
+        hidden_from_client: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", orderId)
+      .eq("user_id", user.id);
+
+    if (updateError) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: updateError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: { orderId } });
   } catch {
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: "Internal server error" },

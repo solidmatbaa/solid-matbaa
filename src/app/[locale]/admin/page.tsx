@@ -67,6 +67,8 @@ export default function AdminPage() {
   const [shippingModal, setShippingModal] = useState<string | null>(null);
   const [approveModal, setApproveModal] = useState<Order | null>(null);
   const [approveForm, setApproveForm] = useState({ price: "", adminNotes: "" });
+  const [rejectModal, setRejectModal] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
   const [shippingForm, setShippingForm] = useState<ShippingInfo>({
     tracking_number: "",
     shipping_carrier: "",
@@ -273,25 +275,43 @@ export default function AdminPage() {
     await loadData({ silent: true });
   }
 
-  async function handleRejectOrder(orderId: string) {
-    setActionError("");
-    setRejectingOrderId(orderId);
+  function openRejectModal(orderId: string) {
+    setRejectModal(orderId);
+    setRejectReason("");
+  }
 
-    const supabase = createSupabaseClient();
-    const { error } = await supabase
-      .from("orders")
-      .update({ status: "cancelled", updated_at: new Date().toISOString() })
-      .eq("id", orderId);
+  async function submitRejectOrder() {
+    if (!rejectModal) return;
 
-    setRejectingOrderId(null);
-
-    if (error) {
-      console.error("[admin] reject order failed:", error);
-      setActionError(error.message);
+    const reason = rejectReason.trim();
+    if (reason.length < 3) {
+      setActionError(t("rejectionReasonRequired"));
       return;
     }
 
-    setNewOrders((prev) => prev.filter((o) => o.id !== orderId));
+    setActionError("");
+    setRejectingOrderId(rejectModal);
+
+    const { ok, error } = await apiFetch("/api/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orderId: rejectModal,
+        status: "rejected",
+        rejectionReason: reason,
+      }),
+    });
+
+    setRejectingOrderId(null);
+
+    if (!ok) {
+      setActionError(error ?? t("actionFailed"));
+      return;
+    }
+
+    setRejectModal(null);
+    setRejectReason("");
+    setNewOrders((prev) => prev.filter((o) => o.id !== rejectModal));
     router.refresh();
     await loadData({ silent: true });
   }
@@ -775,7 +795,7 @@ export default function AdminPage() {
                         <Button
                           size="sm"
                           variant="danger"
-                          onClick={() => void handleRejectOrder(order.id)}
+                          onClick={() => openRejectModal(order.id)}
                           loading={rejectingOrderId === order.id}
                         >
                           {t("rejectOrder")}
@@ -915,15 +935,11 @@ export default function AdminPage() {
           </div>
         ) : activeTab === "archive" ? (
           <div className="space-y-6">
-            <h2 className="font-semibold text-gray-900 text-lg">{t("archiveSearch")}</h2>
-            {archiveOrders.length === 0 ? (
-              <p className="text-gray-500 py-12 text-center card-soft">{t("noArchivedOrders")}</p>
-            ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {archiveOrders.map((order) => renderOrderCard(order, { tab: "archive" }))}
-              </div>
-            )}
-            <div className="card mt-8">
+            <div>
+              <h2 className="font-semibold text-gray-900 text-lg">{t("archiveSearch")}</h2>
+              <p className="text-sm text-gray-500 mt-1">{t("archiveSearchOnlyHint")}</p>
+            </div>
+            <div className="card">
               <h3 className="font-semibold text-gray-900 mb-4">{t("searchByOrderId")}</h3>
               <div className="flex flex-col sm:flex-row gap-2 mb-6">
                 <input
@@ -934,7 +950,7 @@ export default function AdminPage() {
                 />
                 <Button onClick={searchArchive}>{t("search")}</Button>
               </div>
-              {archiveResult && (
+              {archiveResult ? (
                 <div className="card-soft">
                   <p className="font-mono font-bold text-brand-700 mb-2">{archiveResult.id}</p>
                   <p className="text-sm text-gray-500 mb-2">
@@ -952,8 +968,10 @@ export default function AdminPage() {
                       <p className="text-sm text-gray-500 mb-2">{customerAddress}</p>
                     ) : null;
                   })()}
-                  <OrderTable orders={[archiveResult]} />
+                  {renderOrderCard(archiveResult, { tab: "archive", embedded: true })}
                 </div>
+              ) : (
+                <p className="text-gray-500 py-8 text-center">{t("archiveSearchPrompt")}</p>
               )}
             </div>
           </div>
@@ -1001,6 +1019,47 @@ export default function AdminPage() {
                 {t("saveShipping")}
               </Button>
               <Button variant="secondary" onClick={() => setShippingModal(null)}>
+                {t("cancelEdit")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="card w-full max-w-md">
+            <h3 className="font-semibold text-gray-900 mb-1">{t("rejectOrderTitle")}</h3>
+            <p className="text-sm text-gray-500 font-mono mb-4">{rejectModal}</p>
+            <div className="space-y-3 mb-4">
+              <label className="block text-sm font-medium text-gray-700">
+                {t("rejectionReason")}
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder={t("rejectionReasonPlaceholder")}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg resize-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="danger"
+                onClick={() => void submitRejectOrder()}
+                loading={rejectingOrderId === rejectModal}
+                disabled={rejectReason.trim().length < 3}
+                fullWidth
+              >
+                {t("rejectOrder")}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setRejectModal(null);
+                  setRejectReason("");
+                }}
+              >
                 {t("cancelEdit")}
               </Button>
             </div>

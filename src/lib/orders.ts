@@ -86,18 +86,25 @@ export const CLIENT_TRACKING_STATUSES: OrderStatus[] = [
   "delivered",
 ];
 
-/** Hidden from client lists — cancelled/rejected orders only. */
+/** Legacy cancelled status — hidden from client (superseded by rejected workflow). */
 export function isClientOrderCancelled(order: { status: string }): boolean {
-  const status = normalizeOrderStatus(order.status);
-  return status === "rejected" || String(order.status).trim() === "cancelled";
+  return String(order.status).trim() === "cancelled";
 }
 
-/** Active Custom / Pre-made tabs — any non-archived, non-cancelled order still in progress. */
-export function isClientActiveTabOrder(order: Pick<Order, "status" | "is_archived">): boolean {
+export function isClientOrderRejected(order: { status: string }): boolean {
+  return normalizeOrderStatus(order.status) === "rejected";
+}
+
+/** Active Custom / Pre-made tabs — in-progress and rejected orders the client can still see. */
+export function isClientActiveTabOrder(
+  order: Pick<Order, "status" | "is_archived" | "hidden_from_client">
+): boolean {
+  if (order.hidden_from_client) return false;
   if (order.is_archived) return false;
   if (isClientOrderCancelled(order)) return false;
   const status = normalizeOrderStatus(order.status);
-  return status !== "delivered" && status !== "refunded";
+  if (status === "delivered" || status === "refunded") return false;
+  return true;
 }
 
 const TERMINAL_RETURN_STATUSES: ReturnStatus[] = ["rejected", "refunded"];
