@@ -43,10 +43,10 @@ export function Header() {
             className="flex items-center gap-3 transition-transform hover:scale-[1.02] duration-200"
           >
             <Image
-              src="/سيبسي.png"
+              src="/BEST LOGO .png"
               alt="Solid Matbaa"
               width={1024}
-              height={413}
+              height={389}
               className="h-9 sm:h-10 w-auto max-w-[160px] sm:max-w-[180px] object-contain"
               style={{ width: "auto" }}
               priority
