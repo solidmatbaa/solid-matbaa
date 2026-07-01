@@ -16,6 +16,7 @@ import {
   type AddressFormValues,
 } from "@/lib/address-data";
 import { apiFetch, formatCurrency, getLocalizedText, resolveProductImageUrl } from "@/lib/utils";
+import { stripPaymentIbanFromPayload } from "@/lib/payment-details";
 import { BankAccountHolderDisplay } from "@/components/checkout/BankAccountHolderDisplay";
 import type { Locale, Profile, Settings } from "@/types";
 
@@ -67,7 +68,10 @@ export default function CheckoutPage() {
     formData.append("receipt", receiptFile);
     formData.append("items", JSON.stringify(items));
     formData.append("total", String(total));
-    formData.append("address", JSON.stringify(addressFormToUserAddress(addressForm)));
+    formData.append(
+      "address",
+      JSON.stringify(stripPaymentIbanFromPayload(addressFormToUserAddress(addressForm)))
+    );
 
     const res = await fetch("/api/checkout", { method: "POST", body: formData });
     const data = await res.json();

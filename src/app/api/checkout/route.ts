@@ -12,7 +12,7 @@ import {
 } from "@/lib/address-data";
 import { isPaymentReceiptMimeType } from "@/lib/payment-receipts-storage";
 import { uploadPaymentReceipt } from "@/lib/storage";
-import { BANK_ACCOUNT_HOLDER_NAME } from "@/lib/payment-details";
+import { BANK_ACCOUNT_HOLDER_NAME, stripPaymentIbanFromPayload } from "@/lib/payment-details";
 import { resolveProductImageUrl, PRODUCT_IMAGE_PLACEHOLDER } from "@/lib/utils";
 import type { ApiResponse, CartItem, UserAddress } from "@/types";
 
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      addressParsed = addressResult.data as UserAddress;
+      addressParsed = stripPaymentIbanFromPayload(addressResult.data) as UserAddress;
     } catch {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Invalid shipping address" },
@@ -193,7 +193,6 @@ export async function POST(request: NextRequest) {
       total_amount: total,
       receipt_url: receiptUpload.url,
       account_holder_name: BANK_ACCOUNT_HOLDER_NAME,
-      payment_iban: null,
     });
 
     if (orderError) {

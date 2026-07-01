@@ -189,7 +189,6 @@ export async function transitionOrderStatus(
   if (current === "payment_submitted" && nextStatus === "waiting_for_payment") {
     updatePayload.receipt_url = null;
     updatePayload.account_holder_name = BANK_ACCOUNT_HOLDER_NAME;
-    updatePayload.payment_iban = null;
     const reason = options?.rejectionReason?.trim();
     if (reason) {
       updatePayload.admin_notes = reason;
