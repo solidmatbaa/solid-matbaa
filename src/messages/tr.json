@@ -68,6 +68,8 @@
     "submitSuccess": "Talebiniz gönderildi! Sipariş No: {orderId}",
     "submitError": "Bir hata oluştu",
     "fileRequired": "Lütfen PDF dosyası yükleyin",
+    "fileTooLarge": "Üzgünüz, dosya boyutu izin verilen sınırı (4,5 MB) aşıyor. Lütfen dosyayı doğrudan info@solidmatbaa.com adresine gönderin; talebinizi takip edeceğiz.",
+    "maxFileSize": "Maksimum dosya boyutu: 4,5 MB",
     "loginRequired": "Lütfen önce giriş yapın",
     "verifyRequired": "Lütfen önce e-postanızı doğrulayın",
     "loginLink": "Giriş yap",

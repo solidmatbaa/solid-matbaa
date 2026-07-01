@@ -5,8 +5,15 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { Link } from "@/i18n/routing";
 import { validateCustomQuantity, CUSTOM_QUANTITY_MIN, CUSTOM_QUANTITY_STEP } from "@/lib/custom-order";
-import { parseJsonText } from "@/lib/utils";
+import { parseJsonText, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+
+/** Vercel serverless request body limit — validate before upload. */
+const MAX_PDF_SIZE_BYTES = 4.5 * 1024 * 1024;
+
+function isPdfTooLarge(file: File): boolean {
+  return file.size > MAX_PDF_SIZE_BYTES;
+}
 
 export function CustomPrintingForm() {
   const t = useTranslations("customPrinting");
@@ -19,6 +26,7 @@ export function CustomPrintingForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [fileTooLarge, setFileTooLarge] = useState(false);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
@@ -27,10 +35,19 @@ export function CustomPrintingForm() {
     if (!selected.name.toLowerCase().endsWith(".pdf")) {
       setError(t("pdfOnly"));
       setFile(null);
+      setFileTooLarge(false);
+      return;
+    }
+
+    if (isPdfTooLarge(selected)) {
+      setError(t("fileTooLarge"));
+      setFile(selected);
+      setFileTooLarge(true);
       return;
     }
 
     setError("");
+    setFileTooLarge(false);
     setFile(selected);
   }
 
@@ -42,6 +59,13 @@ export function CustomPrintingForm() {
 
     if (!file) {
       setError(t("fileRequired"));
+      setLoading(false);
+      return;
+    }
+
+    if (isPdfTooLarge(file)) {
+      setError(t("fileTooLarge"));
+      setFileTooLarge(true);
       setLoading(false);
       return;
     }
@@ -98,6 +122,7 @@ export function CustomPrintingForm() {
 
       setSuccess(t("submitSuccess", { orderId: data.data?.orderId ?? "" }));
       setFile(null);
+      setFileTooLarge(false);
       setDesignSize("");
       setQuantity("");
       if (fileRef.current) fileRef.current.value = "";
@@ -112,8 +137,24 @@ export function CustomPrintingForm() {
   return (
     <form onSubmit={handleSubmit} className="card space-y-6">
       {error && (
-        <div className="bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {error}
+        <div
+          role="alert"
+          className={cn(
+            "px-4 py-3 rounded-lg text-sm border",
+            fileTooLarge
+              ? "bg-amber-50 text-amber-950 border-amber-300"
+              : "bg-red-50 text-red-700 border-red-200"
+          )}
+        >
+          <p className="font-medium leading-relaxed">{error}</p>
+          {fileTooLarge && (
+            <a
+              href="mailto:info@solidmatbaa.com"
+              className="mt-2 inline-block text-sm font-semibold text-brand-700 underline hover:text-brand-800"
+            >
+              info@solidmatbaa.com
+            </a>
+          )}
           {(error === t("loginRequired") || error === t("verifyRequired")) && (
             <span className="block mt-1">
               <Link href="/auth/login" className="underline font-medium">
@@ -135,7 +176,12 @@ export function CustomPrintingForm() {
           {t("uploadLabel")}
         </label>
         <div
-          className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center hover:border-brand-400 transition-colors cursor-pointer"
+          className={cn(
+            "border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer",
+            fileTooLarge
+              ? "border-amber-400 bg-amber-50/50"
+              : "border-gray-200 hover:border-brand-400"
+          )}
           onClick={() => fileRef.current?.click()}
         >
           <input
@@ -149,11 +195,19 @@ export function CustomPrintingForm() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
           {file ? (
-            <p className="text-brand-700 font-medium">{file.name}</p>
+            <>
+              <p className={cn("font-medium", fileTooLarge ? "text-amber-900" : "text-brand-700")}>
+                {file.name}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {(file.size / (1024 * 1024)).toFixed(2)} MB
+              </p>
+            </>
           ) : (
             <>
               <p className="text-gray-600 font-medium">{t("uploadHint")}</p>
               <p className="text-sm text-gray-400 mt-1">{t("pdfOnly")}</p>
+              <p className="text-sm text-gray-400 mt-1">{t("maxFileSize")}</p>
             </>
           )}
         </div>
@@ -192,7 +246,7 @@ export function CustomPrintingForm() {
         <p className="text-xs text-gray-500 mt-1">{t("quantityHint")}</p>
       </div>
 
-      <Button type="submit" loading={loading} fullWidth size="lg">
+      <Button type="submit" loading={loading} disabled={fileTooLarge} fullWidth size="lg">
         {loading ? t("submitting") : t("submitButton")}
       </Button>
     </form>

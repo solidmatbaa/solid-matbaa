@@ -68,6 +68,8 @@
     "submitSuccess": "Your request was submitted! Order ID: {orderId}",
     "submitError": "Something went wrong",
     "fileRequired": "Please upload a PDF file",
+    "fileTooLarge": "Sorry, the file exceeds the allowed limit (4.5 MB). Please send the file directly to our email info@solidmatbaa.com and we will follow up on your request.",
+    "maxFileSize": "Maximum file size: 4.5 MB",
     "loginRequired": "Please log in first",
     "verifyRequired": "Please verify your email first",
     "loginLink": "Log in",
