@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getLocalizedText } from "@/lib/utils";
 import type { Locale, Settings } from "@/types";
+import { SOCIAL_LINKS } from "@/lib/social-links";
 
 export default async function ImpressumPage({
   params,
@@ -60,6 +61,45 @@ export default async function ImpressumPage({
             <div>
               <dt className="text-sm text-gray-500">{t("phone")}</dt>
               <dd>{contact.phone || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-500">WhatsApp</dt>
+              <dd>
+                <a
+                  href={SOCIAL_LINKS.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 hover:underline"
+                >
+                  +90 501 555 4010
+                </a>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-500">Instagram</dt>
+              <dd>
+                <a
+                  href={SOCIAL_LINKS.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 hover:underline break-all"
+                >
+                  @solid_matbaa
+                </a>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-gray-500">Facebook</dt>
+              <dd>
+                <a
+                  href={SOCIAL_LINKS.facebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-600 hover:underline break-all"
+                >
+                  Solid Matbaa
+                </a>
+              </dd>
             </div>
           </dl>
         </section>

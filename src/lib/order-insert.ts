@@ -1,12 +1,11 @@
 import { BANK_ACCOUNT_HOLDER_NAME, stripPaymentIbanFromPayload } from "@/lib/payment-details";
 
-/**
- * Values allowed by `orders_status_check` (migration 013+).
- * Migration 019 also allows `pending_approval`; inserts use `pending` for custom quotes
- * so submissions work before that migration is applied.
- */
+/** Values allowed by `orders_status_check` (migration 020+). */
 export const DB_ORDER_STATUS_CHECK_VALUES = [
   "pending",
+  "pending_approval",
+  "pending_payment",
+  "paid",
   "approved",
   "waiting_for_payment",
   "payment_submitted",
@@ -15,7 +14,6 @@ export const DB_ORDER_STATUS_CHECK_VALUES = [
   "delivered",
   "refunded",
   "rejected",
-  "pending_approval",
 ] as const;
 
 export type DbOrderStatusCheckValue = (typeof DB_ORDER_STATUS_CHECK_VALUES)[number];
@@ -23,8 +21,8 @@ export type DbOrderStatusCheckValue = (typeof DB_ORDER_STATUS_CHECK_VALUES)[numb
 /** Initial status for standard checkout orders (payment receipt attached). */
 export const INITIAL_STANDARD_ORDER_STATUS = "pending" satisfies DbOrderStatusCheckValue;
 
-/** Initial status for custom quote requests (admin sets price before payment). */
-export const INITIAL_CUSTOM_ORDER_STATUS = "pending" satisfies DbOrderStatusCheckValue;
+/** Initial status for custom quote requests (admin must approve before payment). */
+export const INITIAL_CUSTOM_ORDER_STATUS = "pending_approval" satisfies DbOrderStatusCheckValue;
 
 export function assertValidOrderInsertStatus(
   status: string
@@ -72,7 +70,7 @@ export interface CustomOrderInsertInput {
   designFileUrl: string;
 }
 
-/** Custom quote insert — always includes an explicit, constraint-safe status. */
+/** Custom quote insert — always includes an explicit pending_approval status. */
 export function buildCustomOrderInsert(input: CustomOrderInsertInput) {
   const status = INITIAL_CUSTOM_ORDER_STATUS;
   assertValidOrderInsertStatus(status);

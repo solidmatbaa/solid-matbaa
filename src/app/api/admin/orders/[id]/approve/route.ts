@@ -92,11 +92,7 @@ export async function POST(
     }
 
     const normalized = normalizeOrderStatus(String(orderBefore.status));
-    if (
-      orderBefore.order_type === "custom" &&
-      normalized !== "pending_approval" &&
-      normalized !== "pending"
-    ) {
+    if (orderBefore.order_type === "custom" && normalized !== "pending_approval") {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: "Only quote requests awaiting approval can be approved" },
         { status: 400 }
@@ -120,7 +116,7 @@ export async function POST(
     }
 
     const targetStatus: OrderStatus =
-      orderBefore.order_type === "custom" ? "waiting_for_payment" : "approved";
+      orderBefore.order_type === "custom" ? "pending_payment" : "approved";
 
     const result = await transitionOrderStatus(admin, orderId, targetStatus, {
       price,

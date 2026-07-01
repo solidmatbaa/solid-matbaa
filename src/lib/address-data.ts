@@ -1,6 +1,12 @@
 import type { UserAddress } from "@/types";
 import {
-  COUNTRY_LIST,
+  getAllCountries,
+  getCountryByName,
+  getStateByName,
+  getStatesForCountry,
+  isCountrySupported,
+} from "@/lib/geo/country-state-city-helpers";
+import {
   getCountryAddressConfig,
   isFieldRequired,
   isFieldShown,
@@ -9,12 +15,14 @@ import {
   type SupportedCountry,
 } from "@/lib/address-country-config";
 
-export { COUNTRY_LIST, getCountryAddressConfig, isFieldRequired, isFieldShown };
+export { getCountryAddressConfig, isFieldRequired, isFieldShown };
 export type { SupportedCountry, AddressFieldName };
 
 /** Form state for the hierarchical address picker. */
 export interface AddressFormValues {
+  countryCode: string;
   country: string;
+  stateCode: string;
   province: string;
   city: string;
   district: string;
@@ -27,7 +35,7 @@ export interface AddressFormValues {
 }
 
 export function getCountries(): string[] {
-  return [...COUNTRY_LIST];
+  return getAllCountries().map((country) => country.name);
 }
 
 async function fetchAddressLevel<T>(
@@ -148,35 +156,23 @@ export function getAddressFieldVisibility(
 }
 
 export function applyCountrySelection(
-  country: string
-): Pick<
-  AddressFormValues,
-  | "country"
-  | "province"
-  | "city"
-  | "district"
-  | "neighborhood"
-  | "streetName"
-  | "buildingNumber"
-  | "apartmentNumber"
-  | "postalCode"
-  | "additionalDetails"
-> {
+  country: string,
+  countryCode: string
+): AddressFormValues {
   return {
+    ...getDefaultAddressFormValues(),
     country,
-    province: "",
-    city: "",
-    district: "",
-    neighborhood: "",
-    ...EMPTY_DETAIL_FIELDS,
+    countryCode,
   };
 }
 
 export function applyProvinceSelection(
-  province: string
+  province: string,
+  stateCode: string
 ): Pick<
   AddressFormValues,
   | "province"
+  | "stateCode"
   | "city"
   | "district"
   | "neighborhood"
@@ -188,6 +184,7 @@ export function applyProvinceSelection(
 > {
   return {
     province,
+    stateCode,
     city: "",
     district: "",
     neighborhood: "",
@@ -236,7 +233,9 @@ export function applyNeighborhoodSelection(
 
 export function getDefaultAddressFormValues(): AddressFormValues {
   return {
+    countryCode: "",
     country: "",
+    stateCode: "",
     province: "",
     city: "",
     district: "",
@@ -250,12 +249,9 @@ export function getDefaultAddressFormValues(): AddressFormValues {
 }
 
 export function isGeoSelectionComplete(form: AddressFormValues): boolean {
-  const config = getCountryAddressConfig(form.country);
-  if (!config || !form.country) return false;
-  if (isFieldRequired(config, "state") && !form.province) return false;
-  if (isFieldRequired(config, "city") && !form.city) return false;
-  if (isFieldRequired(config, "district") && !form.district) return false;
-  if (isFieldRequired(config, "neighborhood") && !form.neighborhood) return false;
+  if (!form.countryCode || !form.country) return false;
+  if (getStatesForCountry(form.countryCode).length > 0 && !form.stateCode) return false;
+  if (!form.city.trim()) return false;
   return true;
 }
 
@@ -270,13 +266,11 @@ export function getNeighborhoodParentValue(
 }
 
 export function addressFormToUserAddress(form: AddressFormValues): UserAddress {
-  const config = getCountryAddressConfig(form.country);
-
   return {
     country: form.country,
     state: form.province,
-    city: config && isFieldShown(config, "city") ? form.city : "",
-    district: config && isFieldShown(config, "district") ? form.district : "",
+    city: form.city,
+    district: form.district,
     region: form.neighborhood,
     street: form.streetName,
     building_number: form.buildingNumber,
@@ -289,16 +283,18 @@ export function addressFormToUserAddress(form: AddressFormValues): UserAddress {
 }
 
 export function userAddressToAddressForm(address: UserAddress): AddressFormValues {
-  const config = getCountryAddressConfig(address.country ?? "");
+  const country = getCountryByName(address.country ?? "");
+  const state = country
+    ? getStateByName(country.isoCode, address.state ?? address.province ?? "")
+    : undefined;
 
   return {
+    countryCode: country?.isoCode ?? "",
     country: address.country ?? "",
-    province: address.province ?? address.state ?? "",
-    city: config && isFieldShown(config, "city") ? address.city ?? "" : "",
-    district:
-      config && isFieldShown(config, "district")
-        ? address.district ?? (isFieldShown(config, "city") ? "" : address.city ?? "")
-        : "",
+    stateCode: state?.isoCode ?? "",
+    province: address.state ?? address.province ?? "",
+    city: address.city ?? "",
+    district: address.district ?? "",
     neighborhood: address.neighborhood ?? address.region ?? "",
     streetName: address.street ?? "",
     buildingNumber: address.building_number ?? "",
@@ -309,66 +305,27 @@ export function userAddressToAddressForm(address: UserAddress): AddressFormValue
 }
 
 export function isAddressFormComplete(form: AddressFormValues): boolean {
-  const config = getCountryAddressConfig(form.country);
-  if (!config || !isGeoSelectionComplete(form)) return false;
-
-  const textFields: AddressFieldName[] = [
-    "street",
-    "buildingNumber",
-    "apartmentNumber",
-    "postalCode",
-  ];
-  for (const field of textFields) {
-    if (!isFieldRequired(config, field)) continue;
-    const value =
-      field === "street"
-        ? form.streetName
-        : field === "buildingNumber"
-          ? form.buildingNumber
-          : field === "apartmentNumber"
-            ? form.apartmentNumber
-            : form.postalCode;
-    if (!value.trim()) return false;
-  }
+  if (!isGeoSelectionComplete(form)) return false;
+  if (!form.streetName.trim()) return false;
+  if (!form.buildingNumber.trim()) return false;
+  if (!form.apartmentNumber.trim()) return false;
   return true;
 }
 
-function fieldRequiredError(config: CountryAddressConfig, field: AddressFieldName): string {
-  const labelKey = config.fields[field].labelKey;
-  const label = labelKey.startsWith("labels.") ? labelKey.slice(7) : labelKey;
-  return `${label} is required`;
-}
-
 export function validateUserAddress(address: UserAddress): string | null {
-  const config = getCountryAddressConfig(address.country);
-  if (!config) return "Unsupported country";
-  if (isFieldRequired(config, "state") && !address.state?.trim()) {
-    return fieldRequiredError(config, "state");
+  if (!address.country?.trim()) return "Country is required";
+  if (!isCountrySupported(address.country)) return "Unsupported country";
+
+  const country = getCountryByName(address.country);
+  if (!country) return "Unsupported country";
+
+  if (getStatesForCountry(country.isoCode).length > 0 && !address.state?.trim()) {
+    return "State / province is required";
   }
-  if (isFieldRequired(config, "city") && !address.city?.trim()) {
-    return fieldRequiredError(config, "city");
-  }
-  if (isFieldRequired(config, "district") && !address.district?.trim()) {
-    return fieldRequiredError(config, "district");
-  }
-  if (
-    isFieldRequired(config, "neighborhood") &&
-    !(address.neighborhood ?? address.region)?.trim()
-  ) {
-    return fieldRequiredError(config, "neighborhood");
-  }
-  if (isFieldRequired(config, "street") && !address.street?.trim()) {
-    return fieldRequiredError(config, "street");
-  }
-  if (isFieldRequired(config, "buildingNumber") && !address.building_number?.trim()) {
-    return fieldRequiredError(config, "buildingNumber");
-  }
-  if (isFieldRequired(config, "apartmentNumber") && !address.apartment_number?.trim()) {
-    return fieldRequiredError(config, "apartmentNumber");
-  }
-  if (isFieldRequired(config, "postalCode") && !address.postal_code?.trim()) {
-    return fieldRequiredError(config, "postalCode");
-  }
+  if (!address.city?.trim()) return "City is required";
+  if (!address.street?.trim()) return "Street is required";
+  if (!address.building_number?.trim()) return "Building number is required";
+  if (!address.apartment_number?.trim()) return "Apartment number is required";
   return null;
 }
 

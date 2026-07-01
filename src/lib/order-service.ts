@@ -192,7 +192,10 @@ export async function transitionOrderStatus(
     updatePayload.admin_notes = options.adminNotes.trim();
   }
 
-  if (current === "payment_submitted" && nextStatus === "waiting_for_payment") {
+  if (
+    (current === "paid" || current === "payment_submitted") &&
+    nextStatus === "pending_payment"
+  ) {
     updatePayload.receipt_url = null;
     updatePayload.account_holder_name = BANK_ACCOUNT_HOLDER_NAME;
     const reason = options?.rejectionReason?.trim();
@@ -240,7 +243,8 @@ export async function transitionOrderStatus(
       trackingUrl: options.shippingInfo.shipping_url,
     });
   } else if (
-    nextStatus === "waiting_for_payment" &&
+    nextStatus === "pending_payment" &&
+    current !== "paid" &&
     current !== "payment_submitted" &&
     customer.order_type === "custom" &&
     customer.profiles?.email
@@ -272,7 +276,10 @@ export async function transitionOrderStatus(
       designSize,
       adminNotes: options?.adminNotes,
     });
-  } else if (current === "payment_submitted" && nextStatus === "waiting_for_payment") {
+  } else if (
+    (current === "paid" || current === "payment_submitted") &&
+    nextStatus === "pending_payment"
+  ) {
     const reason = options?.rejectionReason?.trim();
     await admin.from("notifications").insert({
       user_id: order.user_id,
@@ -442,31 +449,12 @@ export async function fetchAdminSectionCounts(
 
   const pipeline = expandStatusesForQuery(["approved", "processing", "shipping"]);
 
-  const countCustomAwaitingApproval = async () => {
-    const pendingApproval = await countOrders(
-      "custom",
-      expandStatusesForQuery(["pending_approval"]),
-      false
-    );
-    const { count: pendingQuotes } = await admin
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
-      .eq("order_type", "custom")
-      .eq("is_archived", false)
-      .eq("status", "pending")
-      .eq("total_amount", 0);
-    return pendingApproval + (pendingQuotes ?? 0);
-  };
-
   return {
-    newCustom: await countCustomAwaitingApproval(),
-    waitingPaymentCustom:
-      (await countOrders("custom", expandStatusesForQuery(["waiting_for_payment"]), false)) +
-      (await countOrders("custom", expandStatusesForQuery(["payment_submitted"]), false)),
+    newCustom: await countOrders("custom", expandStatusesForQuery(["pending_approval"]), false),
+    waitingPaymentCustom: 0,
     approvedCustom: await countOrders(
       "custom",
-      expandStatusesForQuery(["processing", "shipping"]),
+      expandStatusesForQuery(["paid", "processing", "shipping"]),
       false
     ),
     newStandard: await countOrders("standard", expandStatusesForQuery(["pending"]), false),
@@ -502,6 +490,7 @@ export async function submitCustomOrderPayment(
 
   const current = normalizeOrderStatus(String(order.status));
   const canPay =
+    current === "pending_payment" ||
     current === "waiting_for_payment" ||
     (current === "approved" && order.total_amount > 0 && !order.receipt_url);
 
@@ -522,7 +511,7 @@ export async function submitCustomOrderPayment(
     return { ok: false, error: "Failed to upload payment receipt", status: 500 };
   }
 
-  const paymentDbStatus = toDbOrderStatus("payment_submitted");
+  const paymentDbStatus = toDbOrderStatus("paid");
 
   const { error: updateError } = await admin
     .from("orders")
@@ -544,11 +533,11 @@ export async function submitCustomOrderPayment(
     await admin.from("notifications").insert({
       user_id: order.user_id,
       tenant_id: order.tenant_id,
-      type: "payment_submitted",
+      type: "paid",
       title: {
-        en: "Payment submitted",
-        ar: "تم إرسال الدفع",
-        tr: "Ödeme gönderildi",
+        en: "Payment received",
+        ar: "تم استلام الدفع",
+        tr: "Ödeme alındı",
       },
       message: {
         en: `Payment proof for order ${orderId} was submitted. We will review it shortly.`,
@@ -557,7 +546,7 @@ export async function submitCustomOrderPayment(
       },
       order_id: orderId,
     });
-    await sendStatusEmail(customer.profiles.email, "payment_submitted", locale, {
+    await sendStatusEmail(customer.profiles.email, "paid", locale, {
       name: customer.profiles.full_name ?? "Customer",
       orderId,
       total: String(order.total_amount),

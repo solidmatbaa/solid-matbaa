@@ -119,12 +119,29 @@ const emailTemplates: Record<string, Record<Locale, EmailTemplate>> = {
       body: "Sayın {name},\n\n{orderId} siparişi için ödeme kanıtınız alındı. Ekibimiz doğrulayıp siparişinizi işleme alacaktır.\n\nToplam: {total} EUR\n\nSaygılarımızla,\nSolid Matbaa Ekibi",
     },
   },
+  paid: {
+    en: {
+      subject: "Payment received - {orderId}",
+      body: "Dear {name},\n\nWe received your payment proof for order {orderId}. Our team will verify it and start processing your order.\n\nTotal: {total} EUR\n\nBest regards,\nSolid Matbaa Team",
+    },
+    ar: {
+      subject: "تم استلام الدفع - {orderId}",
+      body: "عزيزي {name}،\n\nاستلمنا إثبات الدفع للطلب {orderId}. سيقوم فريقنا بالتحقق وبدء المعالجة.\n\nالإجمالي: {total} EUR\n\nمع أطيب التحيات،\nفريق سوليد مطبعة",
+    },
+    tr: {
+      subject: "Ödeme alındı - {orderId}",
+      body: "Sayın {name},\n\n{orderId} siparişi için ödeme kanıtınız alındı. Ekibimiz doğrulayıp siparişinizi işleme alacaktır.\n\nToplam: {total} EUR\n\nSaygılarımızla,\nSolid Matbaa Ekibi",
+    },
+  },
 };
 
 const STATUS_ALIASES: Record<string, string> = {
   confirmed: "approved",
   shipped: "shipping",
   refund_processed: "refunded",
+  pending_payment: "waiting_for_payment",
+  paid: "payment_submitted",
+  payment_submitted: "payment_submitted",
 };
 
 function normalizeStatusKey(status: string): string {
@@ -135,6 +152,7 @@ function normalizeStatusKey(status: string): string {
 emailTemplates.approved = emailTemplates.confirmed;
 emailTemplates.shipping = emailTemplates.shipped;
 emailTemplates.refunded = emailTemplates.refund_processed;
+emailTemplates.paid = emailTemplates.payment_submitted;
 
 const rejectionTemplates: Record<Locale, EmailTemplate> = {
   en: {
@@ -301,6 +319,24 @@ export function getNotificationContent(
         en: `Custom order ${orderId} is ready for payment. Tap Order Now in Custom Orders.`,
         ar: `الطلب المخصص ${orderId} جاهز للدفع. اضغط «اطلب الآن» في طلباتك المخصصة.`,
         tr: `${orderId} özel siparişi ödemeye hazır. Özel Siparişler'de Şimdi Sipariş Ver'e tıklayın.`,
+      },
+    },
+    pending_payment: {
+      type: "custom_order_approved",
+      title: { en: "Quote Approved", ar: "تم اعتماد السعر", tr: "Teklif Onaylandı" },
+      message: {
+        en: `Custom order ${orderId} is ready for payment. Tap Order Now in Custom Orders.`,
+        ar: `الطلب المخصص ${orderId} جاهز للدفع. اضغط «اطلب الآن» في طلباتك المخصصة.`,
+        tr: `${orderId} özel siparişi ödemeye hazır. Özel Siparişler'de Şimdi Sipariş Ver'e tıklayın.`,
+      },
+    },
+    paid: {
+      type: "paid",
+      title: { en: "Payment Received", ar: "تم استلام الدفع", tr: "Ödeme Alındı" },
+      message: {
+        en: `Payment proof for order ${orderId} was submitted.`,
+        ar: `تم إرسال إثبات الدفع للطلب ${orderId}.`,
+        tr: `${orderId} siparişi için ödeme kanıtı gönderildi.`,
       },
     },
     payment_submitted: {

@@ -147,6 +147,7 @@
     "selectState": "اختر المحافظة",
     "selectProvince": "اختر المحافظة",
     "selectCity": "اختر المدينة / المنطقة",
+    "cityPlaceholder": "أدخل مدينتك",
     "selectDistrict": "اختر المنطقة",
     "selectNeighborhood": "اختر الحي",
     "loading": "جاري التحميل...",
@@ -255,6 +256,8 @@
     "statuses": {
       "pending": "قيد الانتظار",
       "pending_approval": "في انتظار الموافقة",
+      "pending_payment": "في انتظار الدفع",
+      "paid": "مدفوع",
       "approved": "معتمد",
       "waiting_for_payment": "في انتظار الدفع",
       "payment_submitted": "تم إرسال الدفع",
@@ -330,6 +333,7 @@
     "selectRegion": "اختر المنطقة",
     "selectNeighborhood": "اختر الحي",
     "addressIncomplete": "يرجى إكمال جميع حقول العنوان",
+    "phoneInvalid": "يرجى إدخال رقم هاتف صالح",
     "loginRequired": "تسجيل الدخول مطلوب",
     "loginRequiredDesc": "يجب تسجيل الدخول لتقديم طلب."
   },
@@ -349,7 +353,8 @@
     "updatePassword": "تحديث كلمة المرور",
     "passwordUpdated": "تم تحديث كلمة المرور",
     "passwordMismatch": "كلمتا المرور غير متطابقتين",
-    "wrongPassword": "كلمة المرور الحالية غير صحيحة"
+    "wrongPassword": "كلمة المرور الحالية غير صحيحة",
+    "phoneInvalid": "يرجى إدخال رقم هاتف صالح"
   },
   "admin": {
     "dashboard": "لوحة التحكم",

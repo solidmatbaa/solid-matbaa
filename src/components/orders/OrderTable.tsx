@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import type { Order, OrderStatus, Locale, Return } from "@/types";
 import { formatCurrency, formatDate, getLocalizedText, cn } from "@/lib/utils";
 import { getOrderTracking } from "@/lib/shipping";
-import { getPendingReturnForOrder, orderHasActiveReturn, isCustomAwaitingApproval } from "@/lib/orders";
+import { getPendingReturnForOrder, orderHasActiveReturn, isCustomAwaitingApproval, isCustomPendingPayment } from "@/lib/orders";
 import { canPayCustomOrder } from "@/lib/order-files";
 
 interface OrderTableProps {
@@ -21,6 +21,8 @@ interface OrderTableProps {
 const statusColors: Record<OrderStatus, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   pending_approval: "bg-amber-100 text-amber-800",
+  pending_payment: "bg-sky-100 text-sky-800",
+  paid: "bg-orange-100 text-orange-800",
   approved: "bg-blue-100 text-blue-800",
   waiting_for_payment: "bg-sky-100 text-sky-800",
   payment_submitted: "bg-orange-100 text-orange-800",
@@ -98,7 +100,7 @@ export function OrderTable({
                   {showCustomPayment && isCustomAwaitingApproval(order) && (
                     <p className="mt-1 text-xs text-amber-700">{t("awaitingQuoteApproval")}</p>
                   )}
-                  {showCustomPayment && order.status === "waiting_for_payment" && (
+                  {showCustomPayment && isCustomPendingPayment(order) && (
                     <p className="mt-1 text-xs text-sky-700">{t("paymentReady")}</p>
                   )}
                 </td>
@@ -129,7 +131,7 @@ export function OrderTable({
                   <td className="py-3 px-2">
                     {payable ? (
                       <div className="space-y-2">
-                        {paymentIban && order.status === "waiting_for_payment" && (
+                        {paymentIban && isCustomPendingPayment(order) && (
                           <p className="text-xs text-gray-600 font-mono break-all max-w-[200px]">
                             {t("iban")}: {paymentIban}
                           </p>

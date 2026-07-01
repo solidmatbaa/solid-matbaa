@@ -1,7 +1,8 @@
 import { setRequestLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { HomePageContent } from "@/components/home/HomePageContent";
-import type { Locale, SiteContent } from "@/types";
+import type { Product, Locale, SiteContent } from "@/types";
+import { SOCIAL_LINKS } from "@/lib/social-links";
 
 const defaultSiteContent: SiteContent = {
   hero_title: {
@@ -16,8 +17,8 @@ const defaultSiteContent: SiteContent = {
   },
   hero_button_designs: { en: "Designs", ar: "تصاميمنا", tr: "Tasarımlarımız" },
   hero_button_custom: { en: "Custom Printing", ar: "طباعة مخصصة", tr: "Özel Baskı" },
-  instagram_url: "https://instagram.com/solidmatbaa",
-  facebook_url: "https://facebook.com/solidmatbaa",
+  instagram_url: SOCIAL_LINKS.instagram,
+  facebook_url: SOCIAL_LINKS.facebook,
 };
 
 export default async function HomePage({

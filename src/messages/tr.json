@@ -147,6 +147,7 @@
     "selectState": "Eyalet / il seçin",
     "selectProvince": "İl seçin",
     "selectCity": "Şehir / ilçe seçin",
+    "cityPlaceholder": "Şehrinizi girin",
     "selectDistrict": "İlçe seçin",
     "selectNeighborhood": "Mahalle seçin",
     "loading": "Yükleniyor...",
@@ -255,6 +256,8 @@
     "statuses": {
       "pending": "Beklemede",
       "pending_approval": "Onay Bekliyor",
+      "pending_payment": "Ödeme Bekleniyor",
+      "paid": "Ödendi",
       "approved": "Onaylandı",
       "waiting_for_payment": "Ödeme Bekleniyor",
       "payment_submitted": "Ödeme Gönderildi",
@@ -330,6 +333,7 @@
     "selectRegion": "Bölge seçin",
     "selectNeighborhood": "Mahalle seçin",
     "addressIncomplete": "Lütfen tüm adres alanlarını doldurun",
+    "phoneInvalid": "Lütfen geçerli bir telefon numarası girin",
     "loginRequired": "Giriş Gerekli",
     "loginRequiredDesc": "Sipariş vermek için giriş yapmalısınız."
   },
@@ -349,7 +353,8 @@
     "updatePassword": "Şifreyi Güncelle",
     "passwordUpdated": "Şifre başarıyla güncellendi",
     "passwordMismatch": "Şifreler eşleşmiyor",
-    "wrongPassword": "Mevcut şifre yanlış"
+    "wrongPassword": "Mevcut şifre yanlış",
+    "phoneInvalid": "Lütfen geçerli bir telefon numarası girin"
   },
   "admin": {
     "dashboard": "Kontrol Paneli",

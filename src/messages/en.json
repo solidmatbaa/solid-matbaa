@@ -147,6 +147,7 @@
     "selectState": "Select state / province",
     "selectProvince": "Select province",
     "selectCity": "Select city / district",
+    "cityPlaceholder": "Enter your city",
     "selectDistrict": "Select district",
     "selectNeighborhood": "Select neighborhood",
     "loading": "Loading...",
@@ -254,6 +255,8 @@
     "statuses": {
       "pending": "Pending",
       "pending_approval": "Awaiting Approval",
+      "pending_payment": "Pending Payment",
+      "paid": "Paid",
       "approved": "Approved",
       "waiting_for_payment": "Waiting for Payment",
       "payment_submitted": "Payment Submitted",
@@ -330,6 +333,7 @@
     "selectRegion": "Select region",
     "selectNeighborhood": "Select neighborhood",
     "addressIncomplete": "Please complete all address fields",
+    "phoneInvalid": "Please enter a valid phone number",
     "loginRequired": "Login Required",
     "loginRequiredDesc": "You must be logged in to place an order."
   },
@@ -349,7 +353,8 @@
     "updatePassword": "Update Password",
     "passwordUpdated": "Password updated successfully",
     "passwordMismatch": "Passwords do not match",
-    "wrongPassword": "Current password is incorrect"
+    "wrongPassword": "Current password is incorrect",
+    "phoneInvalid": "Please enter a valid phone number"
   },
   "admin": {
     "dashboard": "Dashboard",

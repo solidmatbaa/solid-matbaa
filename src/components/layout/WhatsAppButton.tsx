@@ -2,14 +2,14 @@
 
 import { motion } from "framer-motion";
 import { pressableHover, pressableTap, pressableTransition } from "@/lib/pressable-motion";
+import { SOCIAL_LINKS } from "@/lib/social-links";
 
 export function WhatsAppButton() {
-  const phone = "00905015554010";
   const message = encodeURIComponent("مرحباً، أود الاستفسار عن خدمات الطباعة");
 
   return (
     <motion.a
-      href={`https://wa.me/${phone}?text=${message}`}
+      href={`${SOCIAL_LINKS.whatsapp}?text=${message}`}
       target="_blank"
       rel="noopener noreferrer"
       aria-label="WhatsApp"

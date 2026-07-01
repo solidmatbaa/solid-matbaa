@@ -1,4 +1,6 @@
 import type { Order } from "@/types";
+import { normalizeOrderStatus } from "@/lib/order-transitions";
+import { isCustomPendingPayment } from "@/lib/orders";
 import { orderDesignAccessUrl } from "@/lib/storage-access";
 
 export const ORDER_DESIGNS_BUCKET = "order-designs";
@@ -25,8 +27,8 @@ export function canPayCustomOrder(order: {
   receipt_url: string | null;
 }): boolean {
   if (order.order_type !== "custom") return false;
-  const status = order.status;
-  if (status === "waiting_for_payment" && order.total_amount > 0) return true;
+  if (isCustomPendingPayment(order)) return true;
+  const status = normalizeOrderStatus(order.status);
   if (status === "approved" && order.total_amount > 0 && !order.receipt_url) return true;
   return false;
 }

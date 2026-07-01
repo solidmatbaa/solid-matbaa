@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { MotionLink } from "@/components/ui/MotionLink";
 import { useAuth } from "@/context/AuthContext";
 import { AddressForm } from "@/components/address/AddressForm";
+import { PhoneNumberInput, isPhoneNumberValid } from "@/components/ui/PhoneNumberInput";
 import {
   addressFormToUserAddress,
   getDefaultAddressFormValues,
@@ -52,6 +53,11 @@ export default function RegisterPage() {
 
     if (!isAddressFormComplete(addressForm)) {
       setError(t("addressIncomplete"));
+      return;
+    }
+
+    if (!isPhoneNumberValid(form.phone)) {
+      setError(t("phoneInvalid"));
       return;
     }
 
@@ -238,7 +244,12 @@ export default function RegisterPage() {
           </div>
           <div>
             <label className={labelClass}>{t("phone")}</label>
-            <input type="tel" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={inputClass} />
+            <PhoneNumberInput
+              id="register-phone"
+              required
+              value={form.phone}
+              onChange={(phone) => setForm({ ...form, phone })}
+            />
           </div>
           <div>
             <label className={labelClass}>{t("password")}</label>

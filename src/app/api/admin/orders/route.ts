@@ -11,14 +11,13 @@ import {
 } from "@/lib/order-transitions";
 import type { ApiResponse } from "@/types";
 import { attachLineItemsToOrders, normalizeAdminOrder } from "@/lib/order-items";
-import { isCustomAwaitingApproval } from "@/lib/orders";
+import { isCustomAwaitingApproval, isCustomPaid } from "@/lib/orders";
 
 /** Nested embed + customer profile; order_items also batch-loaded as fallback. */
 const ORDER_SELECT = "*, order_items(*), profiles(full_name, email, phone, address)";
 
 const VALID_SECTIONS = new Set<string>([
   "newCustom",
-  "waitingPaymentCustom",
   "approvedCustom",
   "newStandard",
   "approvedStandard",
@@ -27,7 +26,6 @@ const VALID_SECTIONS = new Set<string>([
   "approvedReturns",
   "new",
   "approved",
-  "waitingPayment",
   "all",
 ]);
 
@@ -54,10 +52,9 @@ async function requireAdmin() {
   return { profile: profile!, supabase };
 }
 
-function mapLegacySection(section: string): AdminOrderSection | "history" | "allPending" | "allApproved" | "allWaitingPayment" {
+function mapLegacySection(section: string): AdminOrderSection | "history" | "allPending" | "allApproved" {
   if (section === "new") return "allPending";
   if (section === "approved") return "allApproved";
-  if (section === "waitingPayment") return "allWaitingPayment";
   if (section === "all") return "allPending";
   return section as AdminOrderSection;
 }
@@ -110,27 +107,19 @@ export async function GET(request: Request) {
     const section = mapLegacySection(sectionParam);
     const admin = createAdminClient();
 
-    if (section === "allPending" || section === "allApproved" || section === "allWaitingPayment") {
+    if (section === "allPending" || section === "allApproved") {
       const orderStatuses =
         section === "allPending"
           ? (["pending", "pending_approval"] as const)
-          : section === "allWaitingPayment"
-            ? (["waiting_for_payment", "payment_submitted"] as const)
-            : (["approved", "processing", "shipping"] as const);
+          : (["approved", "paid", "processing", "shipping"] as const);
 
-      let query = admin
+      const { data: ordersRaw, error } = await admin
         .from("orders")
         .select(ORDER_SELECT)
         .eq("tenant_id", tenantId)
         .eq("is_archived", false)
         .in("status", expandStatusesForQuery([...orderStatuses]))
         .order("created_at", { ascending: false });
-
-      if (section === "allWaitingPayment") {
-        query = query.eq("order_type", "custom");
-      }
-
-      const { data: ordersRaw, error } = await query;
 
       if (error) {
         console.error("[admin/orders] orders query failed:", error.message);
@@ -146,13 +135,21 @@ export async function GET(request: Request) {
           const status = normalizeOrderStatus(String(order.status));
           const type = String(order.order_type);
           return (
-            (type === "custom" && isCustomAwaitingApproval({
-              order_type: type,
-              status,
-              total_amount: Number(order.total_amount ?? 0),
-            })) ||
+            (type === "custom" && isCustomAwaitingApproval({ order_type: type, status })) ||
             (type === "standard" && status === "pending")
           );
+        });
+      } else {
+        orders = orders.filter((order) => {
+          const status = normalizeOrderStatus(String(order.status));
+          const type = String(order.order_type);
+          if (type === "standard") {
+            return ["approved", "processing", "shipping"].includes(status);
+          }
+          if (type === "custom") {
+            return isCustomPaid({ order_type: type, status }) || ["processing", "shipping"].includes(status);
+          }
+          return false;
         });
       }
 
@@ -247,7 +244,6 @@ export async function GET(request: Request) {
         isCustomAwaitingApproval({
           order_type: String(order.order_type),
           status: normalizeOrderStatus(String(order.status)),
-          total_amount: Number(order.total_amount ?? 0),
         })
       );
     }

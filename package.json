@@ -22,6 +22,7 @@
     "nodemailer": "^7.0.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-phone-number-input": "^3.4.17",
     "resend": "^4.5.1",
     "tailwind-merge": "^3.3.0",
     "turkey-neighbourhoods": "^4.0.3",

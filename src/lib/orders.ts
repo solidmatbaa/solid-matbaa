@@ -1,21 +1,43 @@
 import { normalizeOrderStatus } from "@/lib/order-transitions";
 import type { Order, OrderStatus, OrderTab, Return, ReturnStatus } from "@/types";
 
-/** Custom quote awaiting admin price approval (pending before migration 019, or pending_approval after). */
+/** Custom quote awaiting admin price approval. */
 export function isCustomAwaitingApproval(order: {
+  order_type: string;
+  status: string;
+}): boolean {
+  return (
+    order.order_type === "custom" &&
+    normalizeOrderStatus(order.status) === "pending_approval"
+  );
+}
+
+/** Custom order with payment submitted — ready for admin to process. */
+export function isCustomPaid(order: { order_type: string; status: string }): boolean {
+  if (order.order_type !== "custom") return false;
+  const status = normalizeOrderStatus(order.status);
+  return status === "paid" || status === "payment_submitted";
+}
+
+/** Custom order awaiting customer bank transfer. */
+export function isCustomPendingPayment(order: {
   order_type: string;
   status: string;
   total_amount: number;
 }): boolean {
   if (order.order_type !== "custom") return false;
   const status = normalizeOrderStatus(order.status);
-  if (status === "pending_approval") return true;
-  return status === "pending" && order.total_amount === 0;
+  return (
+    (status === "pending_payment" || status === "waiting_for_payment") &&
+    order.total_amount > 0
+  );
 }
 
 const ACTIVE_STATUSES: OrderStatus[] = [
   "pending",
   "pending_approval",
+  "pending_payment",
+  "paid",
   "approved",
   "waiting_for_payment",
   "payment_submitted",
@@ -83,7 +105,6 @@ export function filterOrdersByTab(
         if (o.status === "refunded") return false;
 
         const openReturn = getOpenReturn(o.id, returns);
-        // Keep in history while refund is pending; once admin acts, show in Returns tab
         if (openReturn && openReturn.status !== "pending") return false;
 
         return (
@@ -130,9 +151,9 @@ export async function generateOrderId(
 export const ORDER_STATUS_FLOW: OrderStatus[] = [
   "pending",
   "pending_approval",
+  "pending_payment",
+  "paid",
   "approved",
-  "waiting_for_payment",
-  "payment_submitted",
   "processing",
   "shipping",
   "delivered",
@@ -148,12 +169,16 @@ export const RETURN_STATUS_FLOW: ReturnStatus[] = [
 
 export function getNextStatuses(current: OrderStatus | string): OrderStatus[] {
   const normalized = normalizeOrderStatus(String(current));
-  if (normalized === "payment_submitted") return ["processing"];
-  if (normalized === "waiting_for_payment") return [];
+  if (normalized === "paid" || normalized === "payment_submitted") return ["processing"];
+  if (normalized === "pending_payment" || normalized === "waiting_for_payment") return [];
   const idx = ORDER_STATUS_FLOW.indexOf(normalized);
   if (idx === -1) return [];
   return ORDER_STATUS_FLOW.slice(idx + 1).filter(
-    (status) => status !== "waiting_for_payment" && status !== "payment_submitted"
+    (status) =>
+      status !== "pending_payment" &&
+      status !== "paid" &&
+      status !== "waiting_for_payment" &&
+      status !== "payment_submitted"
   );
 }
 

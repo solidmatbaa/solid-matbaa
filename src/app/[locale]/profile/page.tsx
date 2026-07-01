@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { Button } from "@/components/ui/Button";
+import { PhoneNumberInput, isPhoneNumberValid } from "@/components/ui/PhoneNumberInput";
 import { createClient } from "@/lib/supabase/client";
 import { apiFetch } from "@/lib/utils";
 import { formatAddressPath } from "@/lib/address-data";
@@ -35,6 +36,11 @@ export default function ProfilePage() {
 
   async function handleUpdateProfile(e: React.FormEvent) {
     e.preventDefault();
+    if (!isPhoneNumberValid(phone)) {
+      setError(t("phoneInvalid"));
+      return;
+    }
+
     setLoading(true);
     setError("");
     setMessage("");
@@ -108,7 +114,12 @@ export default function ProfilePage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t("phone")}</label>
-              <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-4 py-2.5 border border-gray-200 rounded-lg" />
+              <PhoneNumberInput
+                id="profile-phone"
+                required
+                value={phone}
+                onChange={setPhone}
+              />
             </div>
             {address && (
               <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg space-y-1">

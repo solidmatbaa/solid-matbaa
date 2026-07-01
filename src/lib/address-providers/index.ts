@@ -1,62 +1,55 @@
 import {
-  COUNTRY_LIST,
+  getAllCountries,
+  getCitiesForLocation,
+  getCountryByName,
+  getStateByName,
+  getStatesForCountry,
+  isCountrySupported,
+} from "@/lib/geo/country-state-city-helpers";
+import {
   getCountryAddressConfig,
-  isSupportedCountry,
+  isSupportedCountry as isLegacySupportedCountry,
 } from "@/lib/address-country-config";
-import {
-  getInternationalDistricts,
-  getInternationalNeighborhoods,
-  getInternationalProvinces,
-  isInternationalDataAvailable,
-} from "@/lib/address-providers/international";
-import {
-  getTurkeyDistricts,
-  getTurkeyNeighborhoods,
-  getTurkeyProvinces,
-} from "@/lib/address-providers/turkey";
 
-export const ADDRESS_COUNTRY_LIST = COUNTRY_LIST;
+export const ADDRESS_COUNTRY_LIST = getAllCountries().map((country) => country.name);
 
 export function getSupportedCountries(): string[] {
-  return [...COUNTRY_LIST];
+  return ADDRESS_COUNTRY_LIST;
 }
 
 export function getProvincesForCountry(country: string): string[] {
-  if (!isSupportedCountry(country)) return [];
-  const config = getCountryAddressConfig(country);
-  if (!config?.fields.state.show) return [];
-
-  if (country === "Turkey") return getTurkeyProvinces();
-  if (isInternationalDataAvailable(country)) return getInternationalProvinces(country);
-  return [];
+  const match = getCountryByName(country);
+  if (!match) return [];
+  return getStatesForCountry(match.isoCode).map((state) => state.name);
 }
 
 export function getDistrictsForCountry(country: string, province: string): string[] {
-  if (!isSupportedCountry(country) || !province) return [];
-
-  if (country === "Turkey") return getTurkeyDistricts(province);
-  if (isInternationalDataAvailable(country)) {
-    return getInternationalDistricts(country, province);
-  }
-  return [];
+  const match = getCountryByName(country);
+  if (!match || !province) return [];
+  const state = getStateForProvince(match.isoCode, province);
+  if (!state) return [];
+  return getCitiesForLocation(match.isoCode, state.isoCode).map((city) => city.name);
 }
 
 export function getNeighborhoodsForCountry(
-  country: string,
-  province: string,
-  districtOrCity: string
+  _country: string,
+  _province: string,
+  _districtOrCity: string
 ): string[] {
-  if (!isSupportedCountry(country) || !province || !districtOrCity) return [];
-
-  if (country === "Turkey") {
-    return getTurkeyNeighborhoods(province, districtOrCity);
-  }
-  if (isInternationalDataAvailable(country)) {
-    return getInternationalNeighborhoods(country, province, districtOrCity);
-  }
   return [];
 }
 
 export function getCountryFieldConfig(country: string) {
-  return getCountryAddressConfig(country);
+  if (isCountrySupported(country)) {
+    return getCountryAddressConfig(country as never);
+  }
+  return getCountryAddressConfig("Turkey");
+}
+
+function getStateForProvince(countryCode: string, provinceName: string) {
+  return getStateByName(countryCode, provinceName);
+}
+
+export function isSupportedCountry(country: string): boolean {
+  return isCountrySupported(country) || isLegacySupportedCountry(country);
 }

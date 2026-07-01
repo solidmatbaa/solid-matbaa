@@ -67,7 +67,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      data: { orderId, status: "payment_submitted" as const },
+      data: { orderId, status: "paid" as const },
     });
   } catch (err) {
     console.error("Custom order payment error:", err);

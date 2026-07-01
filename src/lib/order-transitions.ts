@@ -2,7 +2,6 @@ import type { OrderStatus, OrderType, ReturnStatus, ShippingInfo } from "@/types
 
 export type AdminOrderSection =
   | "newCustom"
-  | "waitingPaymentCustom"
   | "approvedCustom"
   | "newStandard"
   | "approvedStandard"
@@ -13,6 +12,8 @@ export type AdminOrderSection =
 export const ORDER_STATUSES = [
   "pending",
   "pending_approval",
+  "pending_payment",
+  "paid",
   "approved",
   "waiting_for_payment",
   "payment_submitted",
@@ -27,6 +28,8 @@ export const ORDER_STATUSES = [
 export const DB_ORDER_STATUSES = [
   "pending",
   "pending_approval",
+  "pending_payment",
+  "paid",
   "confirmed",
   "processing",
   "shipped",
@@ -46,9 +49,11 @@ export type DbOrderStatus = (typeof DB_ORDER_STATUSES)[number];
 export const APP_TO_DB_ORDER_STATUS: Record<OrderStatus, DbOrderStatus> = {
   pending: "pending",
   pending_approval: "pending_approval",
+  pending_payment: "pending_payment",
+  paid: "paid",
   approved: "approved",
-  waiting_for_payment: "waiting_for_payment",
-  payment_submitted: "payment_submitted",
+  waiting_for_payment: "pending_payment",
+  payment_submitted: "paid",
   processing: "processing",
   shipping: "shipped",
   delivered: "delivered",
@@ -60,10 +65,12 @@ export const APP_TO_DB_ORDER_STATUS: Record<OrderStatus, DbOrderStatus> = {
 const DB_TO_APP_ORDER_STATUS: Record<string, OrderStatus> = {
   pending: "pending",
   pending_approval: "pending_approval",
+  pending_payment: "pending_payment",
+  paid: "paid",
   confirmed: "approved",
   approved: "approved",
-  waiting_for_payment: "waiting_for_payment",
-  payment_submitted: "payment_submitted",
+  waiting_for_payment: "pending_payment",
+  payment_submitted: "paid",
   processing: "processing",
   shipped: "shipping",
   shipping: "shipping",
@@ -139,6 +146,14 @@ export function expandStatusesForQuery(statuses: OrderStatus[]): string[] {
   for (const status of statuses) {
     expanded.add(status);
     expanded.add(toDbOrderStatus(status));
+    if (status === "pending_payment" || status === "waiting_for_payment") {
+      expanded.add("pending_payment");
+      expanded.add("waiting_for_payment");
+    }
+    if (status === "paid" || status === "payment_submitted") {
+      expanded.add("paid");
+      expanded.add("payment_submitted");
+    }
     if (status === "approved") expanded.add("confirmed");
     if (status === "shipping") {
       expanded.add("shipped");
@@ -164,14 +179,17 @@ export const RETURN_STATUSES = [
 ] as const satisfies readonly ReturnStatus[];
 
 const APPROVED_PIPELINE: OrderStatus[] = ["approved", "processing", "shipping"];
+const CUSTOM_PROCESSING_PIPELINE: OrderStatus[] = ["paid", "processing", "shipping"];
 
 /** Valid next statuses from each order status (reject uses delete flow) */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["approved"],
-  pending_approval: ["waiting_for_payment"],
+  pending_approval: ["pending_payment"],
+  pending_payment: [],
+  paid: ["processing", "pending_payment"],
   approved: ["processing"],
   waiting_for_payment: [],
-  payment_submitted: ["processing", "waiting_for_payment"],
+  payment_submitted: ["processing", "pending_payment"],
   processing: ["shipping"],
   shipping: ["delivered"],
   delivered: [],
@@ -212,21 +230,14 @@ export function sectionFilters(section: AdminOrderSection): {
       return {
         kind: "orders",
         orderType: "custom",
-        orderStatuses: ["pending", "pending_approval"],
-        archived: false,
-      };
-    case "waitingPaymentCustom":
-      return {
-        kind: "orders",
-        orderType: "custom",
-        orderStatuses: ["waiting_for_payment", "payment_submitted"],
+        orderStatuses: ["pending_approval"],
         archived: false,
       };
     case "approvedCustom":
       return {
         kind: "orders",
         orderType: "custom",
-        orderStatuses: ["processing", "shipping"],
+        orderStatuses: CUSTOM_PROCESSING_PIPELINE,
         archived: false,
       };
     case "newStandard":
@@ -279,17 +290,20 @@ export function validateOrderStatusUpdate(
 
   if (
     orderType === "custom" &&
-    (current === "pending" || current === "pending_approval") &&
-    next === "waiting_for_payment"
+    current === "pending_approval" &&
+    next === "pending_payment"
   ) {
     return { ok: true };
   }
 
-  if (current === "payment_submitted" && next === "waiting_for_payment") {
+  if (
+    (current === "paid" || current === "payment_submitted") &&
+    next === "pending_payment"
+  ) {
     return { ok: true };
   }
 
-  if (current === "payment_submitted" && next === "processing") {
+  if ((current === "paid" || current === "payment_submitted") && next === "processing") {
     return { ok: true };
   }
 
@@ -329,7 +343,6 @@ export type AdminSectionCounts = Record<AdminOrderSection, number>;
 
 export const ADMIN_SECTIONS: AdminOrderSection[] = [
   "newCustom",
-  "waitingPaymentCustom",
   "approvedCustom",
   "newStandard",
   "approvedStandard",
