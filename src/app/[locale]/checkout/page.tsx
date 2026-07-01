@@ -16,7 +16,7 @@ import {
   type AddressFormValues,
 } from "@/lib/address-data";
 import { apiFetch, fetchJson, formatCurrency, getLocalizedText, resolveProductImageUrl } from "@/lib/utils";
-import { stripPaymentIbanFromPayload } from "@/lib/payment-details";
+import { getSiteIban, stripPaymentIbanFromPayload } from "@/lib/payment-details";
 import { BankAccountHolderDisplay } from "@/components/checkout/BankAccountHolderDisplay";
 import type { Locale, Profile, Settings } from "@/types";
 
@@ -37,7 +37,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     apiFetch<Settings>("/api/settings").then(({ data }) => {
-      if (data?.iban) setIban(data.iban);
+      setIban(getSiteIban(data?.iban));
     });
   }, []);
 

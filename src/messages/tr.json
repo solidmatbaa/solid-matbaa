@@ -429,6 +429,7 @@
     "hero_button_custom": "Özel Baskı Butonu",
     "sizes": "Mevcut Boyutlar",
     "iban": "IBAN",
+    "ibanReadOnlyNote": "Bu IBAN sabittir ve yönetici panelinden değiştirilemez.",
     "contactInfo": "İletişim Bilgileri",
     "saveSettings": "Ayarları Kaydet",
     "settingsSaved": "Ayarlar başarıyla kaydedildi",

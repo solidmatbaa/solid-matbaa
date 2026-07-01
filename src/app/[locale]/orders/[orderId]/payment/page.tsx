@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { apiFetch, formatCurrency, getLocalizedText } from "@/lib/utils";
 import { BankAccountHolderDisplay } from "@/components/checkout/BankAccountHolderDisplay";
 import { canPayCustomOrder } from "@/lib/order-files";
+import { getSiteIban } from "@/lib/payment-details";
 import type { Locale, Order, Settings } from "@/types";
 
 export default function CustomOrderPaymentPage({
@@ -44,7 +45,7 @@ export default function CustomOrderPaymentPage({
         apiFetch<Settings>("/api/settings"),
       ]);
 
-      if (settingsRes.data?.iban) setIban(settingsRes.data.iban);
+      if (settingsRes.data) setIban(getSiteIban(settingsRes.data.iban));
 
       const match = ordersRes.data?.find((o) => o.id === orderId) ?? null;
       if (!match) {
@@ -55,7 +56,6 @@ export default function CustomOrderPaymentPage({
         setOrder(match);
       } else {
         setOrder(match);
-        if (match.payment_iban) setIban(match.payment_iban);
       }
 
       setLoading(false);

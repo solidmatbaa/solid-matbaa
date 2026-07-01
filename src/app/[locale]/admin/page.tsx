@@ -12,13 +12,13 @@ import { ProductManager } from "@/components/admin/ProductManager";
 import { AdminOrderItems } from "@/components/admin/AdminOrderItems";
 import {
   AdminPaymentVerification,
-  type AdminPaymentDetailsPayload,
 } from "@/components/admin/AdminPaymentVerification";
 import { apiFetch, formatCurrency, getLocalizedText } from "@/lib/utils";
 import { getNextStatuses, isCustomAwaitingApproval, isCustomPaid } from "@/lib/orders";
 import { getOrderTracking } from "@/lib/shipping";
 import { formatAdminOrderAddress } from "@/lib/address-data";
 import { getOrderDesignFileUrl } from "@/lib/order-files";
+import { getSiteIban } from "@/lib/payment-details";
 import { paymentReceiptAccessUrl } from "@/lib/storage-access";
 import type { Order, Return, OrderStatus, Settings, Product, Locale, ShippingInfo, UserAddress } from "@/types";
 
@@ -351,7 +351,6 @@ export default function AdminPage() {
       body: JSON.stringify({
         hero_images: settings.hero_images,
         sizes: settings.sizes,
-        iban: settings.iban,
         contact_info: settings.contact_info,
         site_content: settings.site_content,
       }),
@@ -370,30 +369,6 @@ export default function AdminPage() {
 
   function isAwaitingQuoteApproval(order: Order) {
     return isCustomAwaitingApproval(order);
-  }
-
-  async function savePaymentDetails(orderId: string, payload: AdminPaymentDetailsPayload) {
-    setActionError("");
-    const { ok, error, data } = await apiFetch<{
-      orderId: string;
-      payment_iban?: string;
-    }>(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentIban: payload.paymentIban,
-      }),
-    });
-
-    if (!ok) {
-      setActionError(error ?? t("actionFailed"));
-      return false;
-    }
-
-    patchOrderInLists(orderId, {
-      payment_iban: data?.payment_iban ?? payload.paymentIban,
-    });
-    return true;
   }
 
   function renderOrderCard(order: Order, showActions = false) {
@@ -458,12 +433,8 @@ export default function AdminPage() {
                   title: t("paymentVerification"),
                   iban: t("iban"),
                   accountHolderName: t("accountHolderName"),
-                  edit: t("editPaymentDetails"),
-                  save: t("savePaymentDetails"),
-                  cancel: t("cancelEdit"),
                   viewReceipt: t("viewReceipt"),
                 }}
-                onSave={savePaymentDetails}
               />
             )}
             {designUrl && (
@@ -684,11 +655,10 @@ export default function AdminPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">{t("iban")}</label>
-              <input
-                value={settings.iban ?? ""}
-                onChange={(e) => setSettings({ ...settings, iban: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg font-mono"
-              />
+              <p className="w-full px-4 py-2.5 border border-gray-200 rounded-lg font-mono bg-gray-50 text-gray-800">
+                {getSiteIban(settings.iban) || "—"}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">{t("ibanReadOnlyNote")}</p>
             </div>
 
             <div>

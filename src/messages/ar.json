@@ -429,6 +429,7 @@
     "hero_button_custom": "زر الطباعة المخصصة",
     "sizes": "الأحجام المتاحة",
     "iban": "رقم IBAN",
+    "ibanReadOnlyNote": "رقم IBAN ثابت ولا يمكن تغييره من لوحة التحكم.",
     "contactInfo": "معلومات الاتصال",
     "saveSettings": "حفظ الإعدادات",
     "settingsSaved": "تم حفظ الإعدادات بنجاح",

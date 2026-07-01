@@ -430,6 +430,7 @@
     "hero_button_custom": "Custom Printing Button",
     "sizes": "Available Sizes",
     "iban": "IBAN",
+    "ibanReadOnlyNote": "This IBAN is fixed and cannot be changed from the dashboard.",
     "contactInfo": "Contact Information",
     "saveSettings": "Save Settings",
     "settingsSaved": "Settings saved successfully",

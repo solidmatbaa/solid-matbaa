@@ -3,12 +3,12 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isSolidAdmin } from "@/lib/auth";
+import { getSiteIban } from "@/lib/payment-details";
 import type { ApiResponse } from "@/types";
 
 const settingsSchema = z.object({
   hero_images: z.array(z.string()).optional(),
   sizes: z.array(z.string()).optional(),
-  iban: z.string().optional(),
   contact_info: z
     .object({
       email: z.string(),
@@ -59,7 +59,13 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({ success: true, data: settings });
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...settings,
+        iban: getSiteIban(settings.iban),
+      },
+    });
   } catch {
     return NextResponse.json<ApiResponse<null>>(
       { success: false, error: "Internal server error" },

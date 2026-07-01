@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { OrderTable } from "@/components/orders/OrderTable";
 import { ReturnsTable } from "@/components/orders/ReturnsTable";
 import { apiFetch } from "@/lib/utils";
+import { getSiteIban } from "@/lib/payment-details";
 import { filterOrdersByTab, filterReturnsByTab } from "@/lib/orders";
 import type { Order, Return, OrderTab, Settings } from "@/types";
 
@@ -38,7 +39,7 @@ export default function OrdersPage() {
     ]);
     if (ordersRes.data) setOrders(ordersRes.data);
     if (returnsRes.data) setReturns(returnsRes.data);
-    if (settingsRes.data?.iban) setPaymentIban(settingsRes.data.iban);
+    if (settingsRes.data) setPaymentIban(getSiteIban(settingsRes.data.iban) || null);
   }
 
   useEffect(() => {

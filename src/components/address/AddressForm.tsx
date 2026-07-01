@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useTranslations } from "next-intl";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
   applyCitySelection,
   applyCountrySelection,
@@ -34,14 +35,33 @@ export function AddressForm({
   const t = useTranslations("address");
   const countries = useMemo(() => getAllCountries(), []);
 
+  const countryOptions = useMemo(
+    () => countries.map((country) => ({ value: country.isoCode, label: country.name })),
+    [countries]
+  );
+
   const states = useMemo(
     () => getStatesForCountry(value.countryCode),
     [value.countryCode]
   );
 
+  const stateOptions = useMemo(
+    () => states.map((state) => ({ value: state.isoCode, label: state.name })),
+    [states]
+  );
+
   const cities = useMemo(
     () => getCitiesForLocation(value.countryCode, value.stateCode || undefined),
     [value.countryCode, value.stateCode]
+  );
+
+  const cityOptions = useMemo(
+    () =>
+      cities.map((city) => ({
+        value: city.name,
+        label: city.name,
+      })),
+    [cities]
   );
 
   const showStateSelect = states.length > 0;
@@ -61,24 +81,19 @@ export function AddressForm({
         <label htmlFor={`${idPrefix}-country`} className={labelClass}>
           {t("country")}
         </label>
-        <select
+        <SearchableSelect
           id={`${idPrefix}-country`}
+          inputId={`${idPrefix}-country`}
+          options={countryOptions}
           value={value.countryCode}
-          onChange={(e) => {
-            const country = countries.find((c) => c.isoCode === e.target.value);
+          onChange={(isoCode) => {
+            const country = countries.find((c) => c.isoCode === isoCode);
             if (!country) return;
             onChange(applyCountrySelection(country.name, country.isoCode));
           }}
-          className={inputClass}
+          placeholder={t("selectCountry")}
           required
-        >
-          <option value="">{t("selectCountry")}</option>
-          {countries.map((country) => (
-            <option key={country.isoCode} value={country.isoCode}>
-              {country.name}
-            </option>
-          ))}
-        </select>
+        />
       </div>
 
       {showStateSelect && (
@@ -86,24 +101,20 @@ export function AddressForm({
           <label htmlFor={`${idPrefix}-state`} className={labelClass}>
             {t("state")}
           </label>
-          <select
+          <SearchableSelect
             id={`${idPrefix}-state`}
+            inputId={`${idPrefix}-state`}
+            options={stateOptions}
             value={value.stateCode}
-            onChange={(e) => {
-              const state = states.find((s) => s.isoCode === e.target.value);
+            onChange={(isoCode) => {
+              const state = states.find((s) => s.isoCode === isoCode);
               if (!state) return;
               update(applyProvinceSelection(state.name, state.isoCode));
             }}
-            className={inputClass}
+            placeholder={t("selectState")}
+            isDisabled={!value.countryCode}
             required
-          >
-            <option value="">{t("selectState")}</option>
-            {states.map((state) => (
-              <option key={state.isoCode} value={state.isoCode}>
-                {state.name}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       )}
 
@@ -113,20 +124,16 @@ export function AddressForm({
             {t("city")}
           </label>
           {showCitySelect ? (
-            <select
+            <SearchableSelect
               id={`${idPrefix}-city`}
+              inputId={`${idPrefix}-city`}
+              options={cityOptions}
               value={value.city}
-              onChange={(e) => update(applyCitySelection(e.target.value))}
-              className={inputClass}
+              onChange={(cityName) => update(applyCitySelection(cityName))}
+              placeholder={t("selectCity")}
+              isDisabled={showStateSelect && !value.stateCode}
               required
-            >
-              <option value="">{t("selectCity")}</option>
-              {cities.map((city) => (
-                <option key={`${city.name}-${city.latitude}`} value={city.name}>
-                  {city.name}
-                </option>
-              ))}
-            </select>
+            />
           ) : (
             <input
               id={`${idPrefix}-city`}
