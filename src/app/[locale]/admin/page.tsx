@@ -14,7 +14,7 @@ import {
   AdminPaymentVerification,
 } from "@/components/admin/AdminPaymentVerification";
 import { apiFetch, formatCurrency, getLocalizedText } from "@/lib/utils";
-import { getNextStatuses, isCustomAwaitingApproval, isCustomPaid } from "@/lib/orders";
+import { getNextStatuses, isCustomPaid, isOrderPendingApproval } from "@/lib/orders";
 import { getOrderTracking } from "@/lib/shipping";
 import { formatAdminOrderAddress } from "@/lib/address-data";
 import { getOrderDesignFileUrl } from "@/lib/order-files";
@@ -367,8 +367,45 @@ export default function AdminPage() {
     setArchiveResult((prev) => (prev?.id === orderId ? { ...prev, ...patch } : prev));
   }
 
-  function isAwaitingQuoteApproval(order: Order) {
-    return isCustomAwaitingApproval(order);
+  function renderPendingApprovalActions(order: Order) {
+    if (!isOrderPendingApproval(order)) return null;
+
+    return (
+      <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-amber-700 mr-auto">
+          {tOrders("statuses.pending_approval")}
+        </span>
+        <Button
+          size="sm"
+          onClick={() => startApprove(order)}
+          loading={approvingOrderId === order.id}
+        >
+          {approvingOrderId === order.id ? t("approving") : t("approveOrder")}
+        </Button>
+        <Button
+          size="sm"
+          variant="danger"
+          loading={rejectingOrderId === order.id}
+          onClick={async () => {
+            const reason = window.prompt(t("rejectionReasonPrompt"));
+            if (reason === null) return;
+            setRejectingOrderId(order.id);
+            try {
+              await updateOrderStatus(
+                order.id,
+                "rejected",
+                undefined,
+                reason.trim() || undefined
+              );
+            } finally {
+              setRejectingOrderId(null);
+            }
+          }}
+        >
+          {t("rejectOrder")}
+        </Button>
+      </div>
+    );
   }
 
   function renderOrderCard(order: Order, showActions = false) {
@@ -488,34 +525,7 @@ export default function AdminPage() {
           </div>
 
           {showActions ? (
-            isAwaitingQuoteApproval(order) ? (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => startApprove(order)}
-                  loading={approvingOrderId === order.id}
-                >
-                  {approvingOrderId === order.id ? t("approving") : t("approveOrder")}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  loading={rejectingOrderId === order.id}
-                  onClick={async () => {
-                    const reason = window.prompt(t("rejectionReasonPrompt"));
-                    if (!reason?.trim()) return;
-                    setRejectingOrderId(order.id);
-                    try {
-                      await updateOrderStatus(order.id, "rejected", undefined, reason.trim());
-                    } finally {
-                      setRejectingOrderId(null);
-                    }
-                  }}
-                >
-                  {t("rejectOrder")}
-                </Button>
-              </div>
-            ) : isCustomPaid(order) ? (
+            isCustomPaid(order) ? (
               <div className="flex flex-col items-end gap-2">
                 {receiptAccessUrl && (
                   <a
@@ -545,6 +555,10 @@ export default function AdminPage() {
                   </Button>
                 </div>
               </div>
+            ) : isOrderPendingApproval(order) ? (
+              <span className="text-sm font-medium text-amber-700">
+                {tOrders("statuses.pending_approval")}
+              </span>
             ) : (
               <span className="text-sm text-gray-500">{tOrders(`statuses.${order.status}`)}</span>
             )
@@ -562,6 +576,8 @@ export default function AdminPage() {
             </select>
           )}
         </div>
+
+        {renderPendingApprovalActions(order)}
 
         <AdminOrderItems
           order={order}

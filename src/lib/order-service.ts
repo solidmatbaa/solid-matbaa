@@ -138,6 +138,55 @@ export async function transitionOrderStatus(
 
   if (nextStatus === "rejected") {
     const reason = options?.rejectionReason?.trim();
+
+    if (current === "pending_approval") {
+      const { error: updateError } = await admin
+        .from("orders")
+        .update({
+          status: "cancelled",
+          admin_notes: reason || order.admin_notes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", orderId);
+
+      if (updateError) {
+        return { ok: false, error: updateError.message };
+      }
+
+      const customer = order as OrderWithCustomer;
+      const locale = (customer.profiles?.locale ?? "en") as Locale;
+
+      if (customer.profiles?.email) {
+        await sendRejectionEmail(customer.profiles.email, locale, {
+          name: customer.profiles.full_name ?? "Customer",
+          orderId,
+          reason: reason || "Order cancelled by admin",
+          total: String(order.total_amount),
+        });
+      }
+
+      await admin.from("notifications").insert({
+        user_id: order.user_id,
+        tenant_id: order.tenant_id,
+        type: "order_rejected",
+        title: getNotificationContent("rejected", orderId).title,
+        message: {
+          en: reason
+            ? `Order ${orderId} was cancelled. Reason: ${reason}`
+            : `Order ${orderId} was cancelled.`,
+          ar: reason
+            ? `تم إلغاء الطلب ${orderId}. السبب: ${reason}`
+            : `تم إلغاء الطلب ${orderId}.`,
+          tr: reason
+            ? `${orderId} numaralı sipariş iptal edildi. Sebep: ${reason}`
+            : `${orderId} numaralı sipariş iptal edildi.`,
+        },
+        order_id: orderId,
+      });
+
+      return { ok: true };
+    }
+
     if (!reason || reason.length < 3) {
       return { ok: false, error: "Rejection reason is required" };
     }

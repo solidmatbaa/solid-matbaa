@@ -12,6 +12,11 @@ export function isCustomAwaitingApproval(order: {
   );
 }
 
+/** Any order awaiting admin approval (quote review). */
+export function isOrderPendingApproval(order: { status: string }): boolean {
+  return normalizeOrderStatus(order.status) === "pending_approval";
+}
+
 /** Custom order with payment submitted — ready for admin to process. */
 export function isCustomPaid(order: { order_type: string; status: string }): boolean {
   if (order.order_type !== "custom") return false;
