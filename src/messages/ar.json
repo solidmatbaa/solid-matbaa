@@ -263,7 +263,7 @@
       "waiting_for_payment": "في انتظار الدفع",
       "payment_submitted": "تم إرسال الدفع",
       "processing": "قيد المعالجة",
-      "shipping": "قيد الشحن",
+      "shipping": "تم الشحن",
       "delivered": "تم التسليم",
       "refunded": "تم الاسترداد",
       "rejected": "مرفوض"
@@ -401,6 +401,7 @@
     "saveAccountHolderName": "حفظ",
     "cancelEdit": "إلغاء",
     "shippingDetails": "تفاصيل الشحن",
+    "shippingDetailsRequired": "رقم التتبع واسم شركة الشحن ورابط التتبع مطلوبة",
     "trackingNumber": "رقم التتبع",
     "shippingCompany": "شركة الشحن",
     "trackingUrl": "رابط التتبع",

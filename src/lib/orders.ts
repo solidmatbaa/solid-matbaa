@@ -50,9 +50,16 @@ export function belongsInAdminNewOrders(order: {
   return isCustomPaymentAwaitingReview(order);
 }
 
-/** Orders shown in the admin Approved Orders tab. */
+/** Active fulfillment statuses shown in the admin Approved Orders tab. */
+export const FULFILLMENT_PIPELINE_STATUSES: OrderStatus[] = [
+  "in_progress",
+  "processing",
+  "shipping",
+];
+
+/** Orders shown in the admin Approved Orders tab (both pre-made and custom after payment). */
 export function belongsInAdminApprovedOrders(order: { status: string }): boolean {
-  return normalizeOrderStatus(order.status) === "in_progress";
+  return FULFILLMENT_PIPELINE_STATUSES.includes(normalizeOrderStatus(order.status));
 }
 
 /** Custom order awaiting customer bank transfer. */
@@ -203,12 +210,12 @@ export const RETURN_STATUS_FLOW: ReturnStatus[] = [
   "refunded",
 ];
 
-/** Status options for the admin Approved Orders tab (in_progress only). */
+/** Sequential next status for the admin Approved Orders fulfillment dropdown. */
 export function getApprovedTabNextStatuses(current: OrderStatus | string): OrderStatus[] {
   const normalized = normalizeOrderStatus(String(current));
-  if (normalized === "in_progress") {
-    return ["delivered"];
-  }
+  if (normalized === "in_progress") return ["processing"];
+  if (normalized === "processing") return ["shipping"];
+  if (normalized === "shipping") return ["delivered"];
   return [];
 }
 

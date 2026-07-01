@@ -493,9 +493,17 @@ export async function fetchAdminSectionCounts(
   return {
     newCustom: await countOrders("custom", ["pending_approval"], false),
     waitingPaymentCustom: await countOrders("custom", ["pending_payment"], false),
-    approvedCustom: await countOrders("custom", ["in_progress"], false),
+    approvedCustom: await countOrders(
+      "custom",
+      ["in_progress", "processing", "shipped"],
+      false
+    ),
     newStandard: await countOrders("standard", ["pending_approval"], false),
-    approvedStandard: await countOrders("standard", ["in_progress"], false),
+    approvedStandard: await countOrders(
+      "standard",
+      ["in_progress", "processing", "shipped"],
+      false
+    ),
     returns: await countReturns(["pending"], false),
     approvedReturns: await countReturns(["approved", "shipping", "inspecting"], false),
     history: await admin

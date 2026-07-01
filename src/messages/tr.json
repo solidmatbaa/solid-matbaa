@@ -263,7 +263,7 @@
       "waiting_for_payment": "Ödeme Bekleniyor",
       "payment_submitted": "Ödeme Gönderildi",
       "processing": "İşleniyor",
-      "shipping": "Kargoda",
+      "shipping": "Kargoya Verildi",
       "delivered": "Teslim Edildi",
       "refunded": "İade Edildi",
       "rejected": "Reddedildi"
@@ -401,6 +401,7 @@
     "saveAccountHolderName": "Kaydet",
     "cancelEdit": "İptal",
     "shippingDetails": "Kargo Detayları",
+    "shippingDetailsRequired": "Takip numarası, kargo firması ve takip bağlantısı zorunludur",
     "trackingNumber": "Takip Numarası",
     "shippingCompany": "Kargo Şirketi",
     "trackingUrl": "Takip URL",

@@ -3,7 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/auth";
 import { fetchAdminSectionCounts } from "@/lib/order-service";
-import { normalizeOrderStatus, sectionFilters, type AdminOrderSection } from "@/lib/order-transitions";
+import {
+  expandStatusesForQuery,
+  normalizeOrderStatus,
+  sectionFilters,
+  type AdminOrderSection,
+} from "@/lib/order-transitions";
+import { FULFILLMENT_PIPELINE_STATUSES } from "@/lib/orders";
 import type { ApiResponse } from "@/types";
 import { attachLineItemsToOrders, normalizeAdminOrder } from "@/lib/order-items";
 import {
@@ -130,7 +136,7 @@ async function fetchOrdersForAdminTab(
     .order("created_at", { ascending: false });
 
   if (tab === "approved") {
-    query = query.eq("status", "in_progress");
+    query = query.in("status", expandStatusesForQuery(FULFILLMENT_PIPELINE_STATUSES));
   } else {
     query = query.eq("status", "delivered");
   }

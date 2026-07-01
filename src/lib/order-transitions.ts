@@ -182,20 +182,19 @@ export const RETURN_STATUSES = [
   "refunded",
 ] as const satisfies readonly ReturnStatus[];
 
-const APPROVED_PIPELINE: OrderStatus[] = ["approved", "processing", "shipping"];
-const CUSTOM_PROCESSING_PIPELINE: OrderStatus[] = ["pending_payment", "in_progress"];
+const FULFILLMENT_PIPELINE: OrderStatus[] = ["in_progress", "processing", "shipping"];
 
 /** Valid next statuses from each order status (reject uses delete flow) */
 export const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ["approved"],
   pending_approval: ["pending_payment", "in_progress"],
   pending_payment: ["in_progress"],
-  in_progress: ["delivered"],
+  in_progress: ["processing"],
   paid: ["in_progress", "pending_payment"],
   approved: ["processing"],
   waiting_for_payment: ["in_progress"],
   payment_submitted: ["in_progress", "pending_payment"],
-  processing: ["in_progress", "delivered"],
+  processing: ["shipping"],
   shipping: ["delivered"],
   delivered: [],
   refunded: [],
@@ -242,21 +241,21 @@ export function sectionFilters(section: AdminOrderSection): {
       return {
         kind: "orders",
         orderType: "custom",
-        orderStatuses: CUSTOM_PROCESSING_PIPELINE,
+        orderStatuses: FULFILLMENT_PIPELINE,
         archived: false,
       };
     case "newStandard":
       return {
         kind: "orders",
         orderType: "standard",
-        orderStatuses: ["pending"],
+        orderStatuses: ["pending_approval"],
         archived: false,
       };
     case "approvedStandard":
       return {
         kind: "orders",
         orderType: "standard",
-        orderStatuses: APPROVED_PIPELINE,
+        orderStatuses: FULFILLMENT_PIPELINE,
         archived: false,
       };
     case "history":
@@ -316,7 +315,18 @@ export function validateOrderStatusUpdate(
     return { ok: true };
   }
 
-  if (current === "in_progress" && next === "delivered") {
+  if (current === "in_progress" && next === "processing") {
+    return { ok: true };
+  }
+
+  if (current === "processing" && next === "shipping") {
+    if (!shippingInfo) {
+      return { ok: false, error: "Shipping info is required when marking as shipped" };
+    }
+    return { ok: true };
+  }
+
+  if (current === "shipping" && next === "delivered") {
     return { ok: true };
   }
 

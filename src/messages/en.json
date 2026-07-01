@@ -264,7 +264,7 @@
       "waiting_for_payment": "Waiting for Payment",
       "payment_submitted": "Payment Submitted",
       "processing": "Processing",
-      "shipping": "Shipping",
+      "shipping": "Shipped",
       "delivered": "Delivered",
       "refunded": "Refunded",
       "rejected": "Rejected"
@@ -404,6 +404,7 @@
     "saveAccountHolderName": "Save",
     "cancelEdit": "Cancel",
     "shippingDetails": "Shipping Details",
+    "shippingDetailsRequired": "Tracking number, carrier name, and tracking link are required",
     "trackingNumber": "Tracking Number",
     "shippingCompany": "Shipping Company",
     "trackingUrl": "Tracking URL",
