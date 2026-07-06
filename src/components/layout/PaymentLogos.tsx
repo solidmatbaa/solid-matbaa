@@ -1,33 +1,18 @@
-import Image, { type StaticImageData } from "next/image";
-import iyzicoLogo from "@/assets/images/payments/iyzico.webp";
-import mastercardLogo from "@/assets/images/payments/mastercard.png";
-import visaLogo from "@/assets/images/payments/visa.png";
-
-const LOGO_HEIGHT_CLASS = "h-6 sm:h-[30px] w-auto object-contain";
-
-function PaymentLogo({ src, alt }: { src: StaticImageData; alt: string }) {
-  return (
-    <Image
-      src={src}
-      alt={alt}
-      width={src.width}
-      height={src.height}
-      className={LOGO_HEIGHT_CLASS}
-      style={{ width: "auto" }}
-      sizes="30px"
-    />
-  );
-}
+import Image from "next/image";
+import paymentLogos from "@/assets/images/payments/all.png";
 
 export function PaymentLogos() {
   return (
-    <div
-      className="flex flex-wrap items-center justify-center gap-6 sm:gap-8"
-      aria-label="Visa, MasterCard, iyzico"
-    >
-      <PaymentLogo src={visaLogo} alt="Visa" />
-      <PaymentLogo src={mastercardLogo} alt="MasterCard" />
-      <PaymentLogo src={iyzicoLogo} alt="iyzico" />
+    <div className="flex w-full justify-center">
+      <Image
+        src={paymentLogos}
+        alt="Visa, iyzico, MasterCard"
+        width={paymentLogos.width}
+        height={paymentLogos.height}
+        className="h-10 w-auto max-w-full object-contain"
+        style={{ width: "auto" }}
+        sizes="(max-width: 640px) 90vw, 320px"
+      />
     </div>
   );
 }
