@@ -1,54 +1,33 @@
-import Image from "next/image";
+import Image, { type StaticImageData } from "next/image";
+import iyzicoLogo from "@/assets/images/payments/iyzico.webp";
+import mastercardLogo from "@/assets/images/payments/mastercard.png";
+import visaLogo from "@/assets/images/payments/visa.png";
 
-const BADGE_CLASS =
-  "h-9 sm:h-10 w-[4.75rem] sm:w-[5.25rem] px-2.5 py-1.5 bg-white/95 rounded-md flex items-center justify-center shrink-0";
+const LOGO_HEIGHT_CLASS = "h-6 sm:h-[30px] w-auto object-contain";
 
-const LOGO_CLASS = "h-5 sm:h-6 w-auto max-w-full object-contain";
+function PaymentLogo({ src, alt }: { src: StaticImageData; alt: string }) {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={src.width}
+      height={src.height}
+      className={LOGO_HEIGHT_CLASS}
+      style={{ width: "auto" }}
+      sizes="30px"
+    />
+  );
+}
 
 export function PaymentLogos() {
   return (
     <div
-      className="flex flex-wrap items-center justify-center gap-4 sm:gap-6"
+      className="flex flex-wrap items-center justify-center gap-6 sm:gap-8"
       aria-label="Visa, MasterCard, iyzico"
     >
-      <div className={BADGE_CLASS}>
-        <Image
-          src="/images/payments/visa.png"
-          alt="Visa"
-          width={512}
-          height={166}
-          className={LOGO_CLASS}
-          sizes="(min-width: 640px) 5rem, 4.75rem"
-        />
-      </div>
-
-      <div className={BADGE_CLASS}>
-        <svg viewBox="0 0 36 22" className={LOGO_CLASS} aria-label="MasterCard" role="img">
-          <circle cx="13" cy="11" r="9" fill="#EB001B" />
-          <circle cx="23" cy="11" r="9" fill="#F79E1B" fillOpacity="0.95" />
-          <path
-            fill="#FF5F00"
-            d="M18 4.8a9 9 0 0 0-3.4 6.2 9 9 0 0 0 3.4 6.2 9 9 0 0 0 3.4-6.2 9 9 0 0 0-3.4-6.2z"
-          />
-        </svg>
-      </div>
-
-      <div className={BADGE_CLASS}>
-        <svg viewBox="0 0 88 24" className={LOGO_CLASS} aria-label="iyzico" role="img">
-          <rect width="88" height="24" rx="6" fill="#1E64FF" />
-          <text
-            x="44"
-            y="16"
-            textAnchor="middle"
-            fill="#FFFFFF"
-            fontSize="11"
-            fontWeight="700"
-            fontFamily="system-ui, -apple-system, sans-serif"
-          >
-            iyzico
-          </text>
-        </svg>
-      </div>
+      <PaymentLogo src={visaLogo} alt="Visa" />
+      <PaymentLogo src={mastercardLogo} alt="MasterCard" />
+      <PaymentLogo src={iyzicoLogo} alt="iyzico" />
     </div>
   );
 }
