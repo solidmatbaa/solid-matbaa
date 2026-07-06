@@ -1,9 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { LegalDocumentLayout } from "@/components/legal/LegalDocumentLayout";
-import {
-  distanceSalesSections,
-  distanceSalesTitle,
-} from "@/lib/legal/documents/distance-sales";
+import { loadLegalDocument } from "@/lib/legal/load-legal-document";
 
 export default async function DistanceSalesPage({
   params,
@@ -13,11 +10,14 @@ export default async function DistanceSalesPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const doc = await loadLegalDocument("distanceSales", locale);
+
   return (
     <LegalDocumentLayout
-      title={distanceSalesTitle}
-      sections={distanceSalesSections}
-      updatedLabel="Son güncelleme: 2026"
+      title={doc.title}
+      sections={doc.sections}
+      updatedLabel={doc.updatedLabel}
+      disclaimer={doc.disclaimer}
     />
   );
 }

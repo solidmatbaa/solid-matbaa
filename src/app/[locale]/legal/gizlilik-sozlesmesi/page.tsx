@@ -1,6 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { LegalDocumentLayout } from "@/components/legal/LegalDocumentLayout";
-import { privacySections, privacyTitle } from "@/lib/legal/documents/privacy";
+import { loadLegalDocument } from "@/lib/legal/load-legal-document";
 
 export default async function PrivacyPage({
   params,
@@ -10,11 +10,14 @@ export default async function PrivacyPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const doc = await loadLegalDocument("privacy", locale);
+
   return (
     <LegalDocumentLayout
-      title={privacyTitle}
-      sections={privacySections}
-      updatedLabel="Son güncelleme: 2026"
+      title={doc.title}
+      sections={doc.sections}
+      updatedLabel={doc.updatedLabel}
+      disclaimer={doc.disclaimer}
     />
   );
 }

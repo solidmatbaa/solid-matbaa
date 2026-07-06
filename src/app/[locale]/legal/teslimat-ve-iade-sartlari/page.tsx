@@ -1,9 +1,6 @@
 import { setRequestLocale } from "next-intl/server";
 import { LegalDocumentLayout } from "@/components/legal/LegalDocumentLayout";
-import {
-  deliveryReturnsSections,
-  deliveryReturnsTitle,
-} from "@/lib/legal/documents/delivery-returns";
+import { loadLegalDocument } from "@/lib/legal/load-legal-document";
 
 export default async function DeliveryReturnsPage({
   params,
@@ -13,11 +10,14 @@ export default async function DeliveryReturnsPage({
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const doc = await loadLegalDocument("deliveryReturns", locale);
+
   return (
     <LegalDocumentLayout
-      title={deliveryReturnsTitle}
-      sections={deliveryReturnsSections}
-      updatedLabel="Son güncelleme: 2026"
+      title={doc.title}
+      sections={doc.sections}
+      updatedLabel={doc.updatedLabel}
+      disclaimer={doc.disclaimer}
     />
   );
 }

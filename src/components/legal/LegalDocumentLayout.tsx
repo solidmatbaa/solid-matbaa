@@ -5,9 +5,15 @@ interface LegalDocumentLayoutProps {
   title: string;
   sections: LegalSection[];
   updatedLabel?: string;
+  disclaimer?: string | null;
 }
 
-export function LegalDocumentLayout({ title, sections, updatedLabel }: LegalDocumentLayoutProps) {
+export function LegalDocumentLayout({
+  title,
+  sections,
+  updatedLabel,
+  disclaimer,
+}: LegalDocumentLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-gray-900 border-b-4 border-brand-500">
@@ -28,6 +34,14 @@ export function LegalDocumentLayout({ title, sections, updatedLabel }: LegalDocu
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-12">
+        {disclaimer && (
+          <div
+            role="note"
+            className="mb-6 rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-4 text-sm sm:text-base text-amber-950 leading-relaxed"
+          >
+            {disclaimer}
+          </div>
+        )}
         <article className="bg-white rounded-2xl border border-gray-200/80 shadow-sm divide-y divide-gray-100">
           {sections.map((section) => (
             <section key={section.title} className="p-6 sm:p-8">
