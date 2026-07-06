@@ -4,6 +4,13 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { SOCIAL_LINKS } from "@/lib/social-links";
+import { PaymentLogos } from "@/components/layout/PaymentLogos";
+
+const LEGAL_LINKS = [
+  { href: "/legal/teslimat-ve-iade-sartlari", labelKey: "deliveryReturns" as const },
+  { href: "/legal/gizlilik-sozlesmesi", labelKey: "privacyPolicy" as const },
+  { href: "/legal/mesafeli-satis-sozlesmesi", labelKey: "distanceSales" as const },
+];
 
 export function Footer() {
   const t = useTranslations("footer");
@@ -25,7 +32,7 @@ export function Footer() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div className="text-center sm:text-start">
             <p className="text-gray-400 text-sm leading-relaxed max-w-xs mx-auto sm:mx-0">
               {t("tagline")}
@@ -104,10 +111,26 @@ export function Footer() {
               </li>
             </ul>
           </div>
+
+          <div className="text-center sm:text-start">
+            <h3 className="font-semibold mb-3 text-brand-500">{t("legal")}</h3>
+            <ul className="space-y-2 text-sm text-gray-400">
+              {LEGAL_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href} className="hover:text-brand-500 transition-colors">
+                    {t(link.labelKey)}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-6 text-center text-sm text-gray-500">
-          © {new Date().getFullYear()} Solid Matbaa. {t("rights")}
+        <div className="border-t border-gray-800 mt-8 pt-8 space-y-6">
+          <PaymentLogos />
+          <p className="text-center text-sm text-gray-500">
+            © {new Date().getFullYear()} Solid Matbaa. {t("rights")}
+          </p>
         </div>
       </div>
     </footer>
