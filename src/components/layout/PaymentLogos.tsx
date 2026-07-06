@@ -9,7 +9,7 @@ export function PaymentLogos() {
         alt="Visa, iyzico, MasterCard"
         width={paymentLogos.width}
         height={paymentLogos.height}
-        className="h-10 w-auto max-w-full object-contain"
+        className="h-10 w-auto max-w-full object-contain bg-transparent mix-blend-screen"
         style={{ width: "auto" }}
         sizes="(max-width: 640px) 90vw, 320px"
       />
